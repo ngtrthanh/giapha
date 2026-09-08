@@ -11,8 +11,11 @@ const mauGT = (n) => n.gioi_tinh === "nu" ? "#a9748c" : n.gioi_tinh === "nam" ? 
 
 
 // Tuổi (tính theo dương lịch, đủ năm). null nếu thiếu ngày sinh.
+const ngayDu = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ""));
 export function tinhTuoi(n) {
-  if (!n.ngay_sinh) return null;
+  // Ngày mờ ('1890', 'khoảng…') không cho ra tuổi chính xác — thà không hiện còn hơn hiện sai
+  if (!ngayDu(n.ngay_sinh) || (n.sinh_kieu && n.sinh_kieu !== "chinh_xac")) return null;
+  if (n.ngay_mat && (!ngayDu(n.ngay_mat) || (n.mat_kieu && n.mat_kieu !== "chinh_xac"))) return null;
   const [ys, ms, ds] = n.ngay_sinh.split("-").map(Number);
   const den = n.ngay_mat ? n.ngay_mat.split("-").map(Number) : null;
   const h = new Date();
@@ -206,7 +209,8 @@ export function ve(data, chon, anhCua, nhanCua) {
   }
   for (const nd of nodes) {
     const n = nd.n, anh = anhCua?.(n.id), nhan = nhanCua?.(n.id);
-    const years = [n.ngay_sinh?.slice(0,4), n.ngay_mat?.slice(0,4)].filter(Boolean).join(' – ');
+    const nam = (d, k) => d ? (k && k !== 'chinh_xac' ? '~' : '') + d.slice(0,4) : null;
+    const years = [nam(n.ngay_sinh, n.sinh_kieu), nam(n.ngay_mat, n.mat_kieu)].filter(Boolean).join(' – ');
     const mat = !!n.ngay_mat || n.gio_ngay != null;
     const tx = doc ? nd.x + W / 2 : nd.x + (anh ? 78 : 14);
     const anchor = doc ? 'middle' : 'start';

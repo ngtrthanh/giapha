@@ -73,13 +73,41 @@
       <div><label>Cha</label><select id="f_cha_id"></select></div>
       <div><label>Mẹ</label><select id="f_me_id"></select></div>
     </div>
-    <label>Ngày sinh (dương)</label><input id="f_ngay_sinh" type="date">
+    <label>Ngày sinh (dương)</label>
+    <div class="ngay-mo">
+      <select id="f_sinh_kieu" aria-label="Mức chắc chắn của ngày sinh">
+        <option value="chinh_xac">Chính xác</option>
+        <option value="khoang">Khoảng</option>
+        <option value="truoc">Trước</option>
+        <option value="sau">Sau</option>
+        <option value="giua">Trong khoảng</option>
+        <option value="khong_ro">Không rõ</option>
+      </select>
+      <input id="f_ngay_sinh" placeholder="1890 hoặc 1890-03 hoặc 1890-03-12" autocomplete="off">
+      <input id="f_sinh_den" placeholder="đến năm…" autocomplete="off" hidden>
+    </div>
+    <div class="ngay-doc" id="docSinh"></div>
+    <input id="f_sinh_goc" placeholder="Nguyên văn bản phả, nếu có: Giáp Tý niên" autocomplete="off">
 
     <label class="hop-chon"><input type="checkbox" id="f_da_mat"> Đã mất</label>
 
     <div id="khoiMat" style="display:none">
       <div class="luoi-2">
-        <div><label>Ngày mất (dương)</label><input id="f_ngay_mat" type="date"></div>
+        <div><label>Ngày mất (dương)</label>
+          <div class="ngay-mo">
+            <select id="f_mat_kieu" aria-label="Mức chắc chắn của ngày mất">
+              <option value="chinh_xac">Chính xác</option>
+              <option value="khoang">Khoảng</option>
+              <option value="truoc">Trước</option>
+              <option value="sau">Sau</option>
+              <option value="giua">Trong khoảng</option>
+              <option value="khong_ro">Không rõ</option>
+            </select>
+            <input id="f_ngay_mat" placeholder="1950 hoặc 1950-08-12" autocomplete="off">
+            <input id="f_mat_den" placeholder="đến năm…" autocomplete="off" hidden>
+          </div>
+          <div class="ngay-doc" id="docMat"></div>
+          <input id="f_mat_goc" placeholder="Nguyên văn: Bảo Đại thập niên" autocomplete="off"></div>
         <div><label>Nơi an táng</label><input id="f_noi_an_tang"></div>
         <div><label>Ngày giỗ (âm) — tự tính</label><input id="f_gio_ngay" type="number" min="1" max="30"></div>
         <div><label>Tháng giỗ (âm) — tự tính</label><input id="f_gio_thang" type="number" min="1" max="12"></div>
@@ -157,6 +185,56 @@
   </div>
 </div>
 
+<!-- Nguồn dẫn: dữ kiện này lấy ở đâu ra -->
+<div class="man" id="manNguon">
+  <div class="hop" style="width:540px">
+    <h3 id="tdNguon">Thêm nguồn</h3>
+    <p style="color:var(--giay-mo);font-size:13px;margin:0">
+      Ghi rõ dữ kiện này lấy từ đâu. Một năm nữa, khi hai chi khai khác nhau,
+      đây là thứ duy nhất giúp phân xử.</p>
+
+    <div class="luoi-2">
+      <div><label>Loại nguồn</label><select id="ng_loai">
+        <option value="bia_mo">Bia mộ</option>
+        <option value="loi_ke">Lời kể</option>
+        <option value="pha_cu">Phả cũ</option>
+        <option value="giay_to">Giấy tờ</option>
+        <option value="anh">Ảnh</option>
+        <option value="suy_doan">Suy đoán</option>
+        <option value="khac">Khác</option>
+      </select></div>
+      <div><label>Độ tin cậy</label><select id="ng_tin_cay">
+        <option value="cao">Cao — thấy tận mắt, có ảnh</option>
+        <option value="vua" selected>Vừa — nghe kể lại</option>
+        <option value="thap">Thấp — cần kiểm chứng</option>
+      </select></div>
+    </div>
+
+    <label>Mô tả nguồn *</label>
+    <input id="ng_mo_ta" placeholder="Bia mộ cụ Thạch, nghĩa trang làng Đông">
+
+    <div class="luoi-2">
+      <div><label>Ai cung cấp</label><input id="ng_nguoi" placeholder="Cụ Bảy, chi 2"></div>
+      <div><label>Thu thập ngày</label><input id="ng_ngay" type="date"></div>
+    </div>
+
+    <label>Dẫn cho dữ kiện nào *</label>
+    <select id="ng_truong"></select>
+
+    <label>Trích nguyên văn từ nguồn</label>
+    <input id="ng_trich" placeholder="Hiển khảo Nguyễn công huý Thạch, kỵ nhật thập nhị nguyệt sơ tam">
+
+    <label>Ảnh kèm theo</label>
+    <select id="ng_media"></select>
+
+    <div class="loi" id="loiNguon"></div>
+    <div class="dong-nut">
+      <button class="chinh" id="btLuuNguon">Lưu nguồn</button>
+      <button id="btHuyNguon">Huỷ</button>
+    </div>
+  </div>
+</div>
+
 <!-- Thêm hôn nhân -->
 <div class="man" id="manHN">
   <div class="hop" style="width:420px">
@@ -177,13 +255,14 @@
 </div>
 
 <script type="module">
-import { api, dangNhap, thoat, toi, anhURL, ngayVN, esc } from '/assets/api.js';
+import { api, dangNhap, thoat, toi, anhURL, ngayVN, esc,
+         moTaNgay, ngayDayDu, NHAN_KIEU_NGUON, NHAN_TIN_CAY } from '/assets/api.js';
 import { boCuc, ve, nhanTuoi } from '/assets/cay.js';
 import { dungDoThi, nhanQuanHe, langGieng, noiToc, conChau, anhChiEm } from '/assets/dothi.js';
 import { duongSangAm, canChiNam, gioSapToi } from '/assets/amlich.js';
 
 const $ = (s) => document.querySelector(s);
-let DL = { nguoi: [], hon_nhan: [], media: [], pha: [] };
+let DL = { nguoi: [], hon_nhan: [], media: [], pha: [], nguon: [], dan_nguon: [] };
 let chon = null, suaId = null, zoom = 1;
 let phaHT = parseInt(new URLSearchParams(location.search).get('pha')) || parseInt(localStorage.getItem('gp_pha')) || null;   // phả đang xem
 function luuPha() {
@@ -429,8 +508,10 @@ function moChiTiet(id) {
         DL.pha.find((p) => p.id === n.pha_id)?.ten || 'phả khác'}</span>` : ''}
     </div>
     <div style="margin-top:16px">
-      ${co('Ngày sinh', n.ngay_sinh ? ngayVN(n.ngay_sinh) + kemAm(n.ngay_sinh) : '')}
-      ${co('Ngày mất', n.ngay_mat ? ngayVN(n.ngay_mat) + kemAm(n.ngay_mat) : '')}
+      ${co('Ngày sinh', esc(moTaNgay(n.ngay_sinh, n.sinh_kieu, n.sinh_den, n.sinh_goc))
+             + (n.sinh_kieu === 'chinh_xac' ? kemAm(n.ngay_sinh) : ''))}
+      ${co('Ngày mất', esc(moTaNgay(n.ngay_mat, n.mat_kieu, n.mat_den, n.mat_goc))
+             + (n.mat_kieu === 'chinh_xac' ? kemAm(n.ngay_mat) : ''))}
       ${co('Tuổi', nhanTuoi(n))}
       ${co('Ngày giỗ', n.gio_ngay ? `${n.gio_ngay}/${n.gio_thang} âm${n.gio_nhuan ? ' (nhuận)' : ''}` : '')}
       ${co('Giỗ tới', gio ? `${ngayVN(fmt(gio.ngay))} — còn ${gio.conLai} ngày` : '')}
@@ -446,13 +527,42 @@ function moChiTiet(id) {
       ${co('Ghi chú', esc(n.ghi_chu))}
       ${co('Sửa gần nhất', `${esc(n.sua_luc)}${n.sua_boi ? ' — ' + esc(n.sua_boi) : ''}`)}
     </div>
+    ${(() => {
+      const dn = DL.dan_nguon.filter((x) => x.nguoi_id === id);
+      const nut = suaDuoc(n) ? '<button id="bNguon" class="nut-nho">+ Nguồn</button>' : '';
+      if (!dn.length) return `<div class="khoi-nguon">
+        <div class="nguon-dau"><span>Nguồn dẫn</span>${nut}</div>
+        <div class="nguon-trong">Chưa có nguồn nào. Mọi dữ kiện ở trên hiện chỉ là lời truyền.</div></div>`;
+      const dong = dn.map((x) => {
+        const ng = DL.nguon.find((g) => g.id === x.nguon_id);
+        if (!ng) return '';
+        return `<div class="nguon-dong tc-${esc(ng.do_tin_cay)}">
+          <div class="nguon-tren">
+            <span class="the">${esc(NHAN_KIEU_NGUON[ng.loai] || ng.loai)}</span>
+            <span class="nguon-truong">${esc(NHAN_TRUONG[x.truong] || x.truong)}</span>
+            <span class="nguon-tc">${esc(NHAN_TIN_CAY[ng.do_tin_cay] || '')}</span>
+            ${suaDuoc(n) ? `<button class="nut-nho nguy" data-xdn="${x.id}">Gỡ</button>` : ''}
+          </div>
+          <div class="nguon-mota">${esc(ng.mo_ta)}</div>
+          ${x.trich ? `<div class="nguon-trich">“${esc(x.trich)}”</div>` : ''}
+          <div class="nguon-ai">${esc([ng.nguoi_cung_cap, ng.ngay_thu_thap].filter(Boolean).join(' · '))}</div>
+        </div>`;
+      }).join('');
+      return `<div class="khoi-nguon">
+        <div class="nguon-dau"><span>Nguồn dẫn (${dn.length})</span>${nut}</div>${dong}</div>`;
+    })()}
     ${anh.length ? `<div class="anh-luoi">${anh.map((m) => m.loai === 'tai_lieu'
       ? `<a href="${anhURL(m.id)}" target="_blank" class="the" style="height:88px;display:flex;align-items:center;justify-content:center">${esc(m.ten_file)}</a>`
       : `<div class="o-anh${m.dai_dien ? ' la-dai-dien' : ''}">
           <img src="${anhURL(m.id)}" title="${esc(m.mo_ta || m.ten_file)}" onclick="window.open('${anhURL(m.id)}')">
           ${m.dai_dien ? '<span class="dau-dd" title="Ảnh đại diện">★</span>' : ''}
-          ${suaDuoc(n) ? `<button class="nut-dd" data-dd="${m.id}" data-bat="${m.dai_dien ? 0 : 1}">${
-            m.dai_dien ? 'Bỏ đại diện' : 'Đặt đại diện'}</button>` : ''}
+          ${m.loai === 'mo' ? '<span class="dau-bia" title="Ảnh bia mộ">BIA</span>' : ''}
+          ${suaDuoc(n) ? (m.loai === 'mo'
+            ? `<button class="nut-dd" data-bia="${m.id}">${m.chu_tren_bia ? 'Sửa chữ bia' : 'Chép chữ bia'}</button>
+               <button class="nut-dd" data-nguonbia="${m.id}">Dùng làm nguồn</button>`
+            : `<button class="nut-dd" data-dd="${m.id}" data-bat="${m.dai_dien ? 0 : 1}">${
+                m.dai_dien ? 'Bỏ đại diện' : 'Đặt đại diện'}</button>`) : ''}
+          ${m.chu_tren_bia ? `<div class="chu-bia">${esc(m.chu_tren_bia)}</div>` : ''}
         </div>`).join('')}</div>` : ''}
     <div class="dong-nut"><button id="bTam">${id === tamId ? 'Bỏ trung tâm' : 'Đặt làm trung tâm'}</button></div>
     ${suaDuoc(n) ? `<div class="dong-nut">
@@ -463,6 +573,9 @@ function moChiTiet(id) {
       <label class="nut" style="margin:0;text-transform:none;letter-spacing:0;padding:8px 16px;
              border:1px solid var(--vien);color:var(--vang);cursor:pointer;display:inline-block">
         + Ảnh/tài liệu<input type="file" id="oFile" hidden></label>
+      <label class="nut" style="margin:0;text-transform:none;letter-spacing:0;padding:8px 16px;
+             border:1px solid var(--vien);color:var(--vang);cursor:pointer;display:inline-block">
+        + Ảnh bia mộ<input type="file" id="oBia" accept="image/*" hidden></label>
       <button id="bCP">Chuyển phả…</button>
       ${toi()?.quyen === 'admin' || toi()?.tao_pha ? '<button id="bMP">Mở phả riêng…</button>' : ''}
       ${toi()?.quyen === 'admin' ? '<button class="nguy" id="bXoa">Xoá</button>' : ''}
@@ -473,6 +586,22 @@ function moChiTiet(id) {
   $('#bang').classList.add('mo');
   // Bỏ trung tâm thì mở lại bảng để nhãn nút cập nhật theo trạng thái mới
   $('#bTam').onclick = () => { if (id === tamId) { datTrungTam(null); moChiTiet(id); } else datTrungTam(id); };
+  const bn = $('#bNguon'); if (bn) bn.onclick = () => moNguon(n);
+  const ob = $('#oBia'); if (ob) ob.onchange = (e) => taiFile(e.target.files[0], id, 'mo');
+  $('#bang').querySelectorAll('[data-xdn]').forEach((b) => b.onclick = async () => {
+    if (!confirm('Gỡ nguồn dẫn này? Dữ kiện vẫn còn, chỉ mất phần dẫn nguồn.')) return;
+    try { await api('/api/dan-nguon/' + b.dataset.xdn, { method: 'DELETE' });
+      await taiCay(); moChiTiet(id); } catch (e) { alert(e.message); }
+  });
+  $('#bang').querySelectorAll('[data-bia]').forEach((b) => b.onclick = async () => {
+    const m = DL.media.find((x) => x.id === +b.dataset.bia);
+    const t = prompt('Chép lại chữ trên bia (giữ nguyên văn, cả chữ Hán nếu có):', m?.chu_tren_bia || '');
+    if (t === null) return;
+    try { await api('/api/media/' + b.dataset.bia, { method: 'PATCH', body: { chu_tren_bia: t } });
+      await taiCay(); moChiTiet(id); } catch (e) { alert(e.message); }
+  });
+  $('#bang').querySelectorAll('[data-nguonbia]').forEach((b) => b.onclick = () =>
+    moNguon(n, +b.dataset.nguonbia));
   $('#bang').querySelectorAll('[data-dd]').forEach((b) => b.onclick = async () => {
     b.disabled = true;
     try {
@@ -504,9 +633,10 @@ const kemAm = (s) => { const t = amStr(s); return t ? ` <span style="color:var(-
 
 // ── Form người ───────────────────────────────────────────────
 const F = ['ho_ten','ten_khac','gioi_tinh','doi','pha_id','chi','cha_id','me_id','ngay_sinh','ngay_mat',
+           'sinh_kieu','sinh_den','sinh_goc','mat_kieu','mat_den','mat_goc',
            'gio_ngay','gio_thang','noi_an_tang','mo_lat','mo_lng','ghi_chu'];
 // Chỉ hiện khi tích "Đã mất" — người còn sống không phải nhìn ô ngày mất, mộ phần
-const F_MAT = ['ngay_mat','gio_ngay','gio_thang','noi_an_tang','mo_lat','mo_lng'];
+const F_MAT = ['ngay_mat','mat_den','mat_goc','gio_ngay','gio_thang','noi_an_tang','mo_lat','mo_lng'];
 function hienKhoiMat(bat) {
   $('#khoiMat').style.display = bat ? '' : 'none';
   if (!bat) {
@@ -575,6 +705,9 @@ function moForm(n, chaMe) {
     .filter(Boolean).map((c) => `<option value="${c}">`).join('');
   $('#f_chi').value = n?.chi ?? (chaMe?.chi ?? pv.chi ?? '');
   $('#f_chi').disabled = pv.chi != null;
+  $('#f_sinh_kieu').value = n?.sinh_kieu || 'chinh_xac';
+  $('#f_mat_kieu').value  = n?.mat_kieu  || 'chinh_xac';
+  capNhatONgay();
   gioNhuan = n?.gio_nhuan || 0;
   $('#loiNguoi').textContent = '';
   if (daMat) dongBoGio(); else $('#goiYGio').textContent = '';
@@ -585,10 +718,33 @@ function moForm(n, chaMe) {
 $('#f_cha_id').onchange = () => suyBanDoi($('#f_cha_id'), $('#f_me_id'));
 $('#f_me_id').onchange  = () => suyBanDoi($('#f_me_id'), $('#f_cha_id'));
 
+// Ô "đến…" chỉ hiện khi chọn "trong khoảng"; dòng dưới đọc lại cho người nhập tự soát
+function capNhatONgay() {
+  for (const [k, o, den, doc] of [['#f_sinh_kieu','#f_ngay_sinh','#f_sinh_den','#docSinh'],
+                                  ['#f_mat_kieu','#f_ngay_mat','#f_mat_den','#docMat']]) {
+    const kieu = $(k).value;
+    $(den).hidden = kieu !== 'giua';
+    $(o).disabled = kieu === 'khong_ro';
+    const t = moTaNgay($(o).value.trim(), kieu, $(den).value.trim(), null);
+    $(doc).textContent = t ? '→ ' + t : '';
+  }
+}
+for (const id of ['#f_sinh_kieu','#f_ngay_sinh','#f_sinh_den','#f_mat_kieu','#f_ngay_mat','#f_mat_den']) {
+  $(id).oninput = capNhatONgay;
+  $(id).onchange = () => { capNhatONgay(); if (id.includes('mat')) dongBoGio(); };
+}
+
 // Ngày giỗ âm luôn suy từ ngày mất dương; chỉ nhập tay khi không rõ ngày mất
 let gioNhuan = 0;
 function dongBoGio() {
   const o1 = $('#f_gio_ngay'), o2 = $('#f_gio_thang'), v = $('#f_ngay_mat').value;
+  const chac = $('#f_mat_kieu').value === 'chinh_xac' && ngayDayDu(v);
+  if (v && !chac) {
+    o1.disabled = o2.disabled = false;
+    $('#goiYGio').textContent =
+      'Ngày mất chưa chắc chắn nên không tự suy ngày giỗ — nhập theo gia phả hoặc bia mộ.';
+    return;
+  }
   if (v) {
     const [y, m, d] = v.split('-').map(Number);
     const a = duongSangAm(d, m, y);
@@ -863,9 +1019,9 @@ $('#btLuuHN').onclick = async () => {
 };
 
 // ── File & xoá ───────────────────────────────────────────────
-async function taiFile(f, nguoiId) {
+async function taiFile(f, nguoiId, loaiEp) {
   if (!f) return;
-  const loai = f.type.startsWith('image/') ? 'anh' : 'tai_lieu';
+  const loai = loaiEp || (f.type.startsWith('image/') ? 'anh' : 'tai_lieu');
   try {
     await api(`/api/media?nguoi_id=${nguoiId}&loai=${loai}`, {
       method: 'POST', raw: true, body: f,
@@ -874,6 +1030,56 @@ async function taiFile(f, nguoiId) {
     await taiCay(); moChiTiet(nguoiId);
   } catch (e) { alert(e.message); }
 }
+
+// ── Nguồn dẫn ────────────────────────────────────────────────
+const NHAN_TRUONG = {
+  ho_ten: 'Họ tên', ten_khac: 'Tên khác', gioi_tinh: 'Giới tính', doi: 'Đời',
+  chi: 'Chi', cha_id: 'Cha', me_id: 'Mẹ', ngay_sinh: 'Ngày sinh', ngay_mat: 'Ngày mất',
+  gio_ngay: 'Ngày giỗ', gio_thang: 'Tháng giỗ', noi_an_tang: 'Nơi an táng', ghi_chu: 'Ghi chú',
+};
+let nguonCua = null;
+
+function moNguon(n, mediaId) {
+  nguonCua = n;
+  $('#tdNguon').textContent = 'Nguồn cho ' + n.ho_ten;
+  $('#ng_truong').innerHTML = Object.entries(NHAN_TRUONG)
+    .map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+  const anhCua = DL.media.filter((m) => m.nguoi_id === n.id);
+  $('#ng_media').innerHTML = '<option value="">— không kèm ảnh —</option>' + anhCua
+    .map((m) => `<option value="${m.id}">${esc(m.ten_file)}${m.loai === 'mo' ? ' (bia mộ)' : ''}</option>`).join('');
+  const bia = mediaId ? DL.media.find((m) => m.id === mediaId) : null;
+  $('#ng_loai').value = bia ? 'bia_mo' : 'loi_ke';
+  $('#ng_tin_cay').value = bia ? 'cao' : 'vua';
+  $('#ng_media').value = mediaId ? String(mediaId) : '';
+  $('#ng_mo_ta').value = bia ? `Bia mộ ${n.ho_ten}` : '';
+  $('#ng_trich').value = bia?.chu_tren_bia || '';
+  $('#ng_truong').value = bia ? 'ngay_mat' : 'ho_ten';
+  $('#ng_nguoi').value = toi()?.ten || '';
+  $('#ng_ngay').value = new Date().toISOString().slice(0, 10);
+  $('#loiNguon').textContent = '';
+  $('#manNguon').classList.add('mo');
+  $('#ng_mo_ta').focus();
+}
+$('#btHuyNguon').onclick = () => $('#manNguon').classList.remove('mo');
+$('#btLuuNguon').onclick = async () => {
+  $('#loiNguon').textContent = '';
+  const b = $('#btLuuNguon'); b.disabled = true;
+  try {
+    const r = await api('/api/nguon', { method: 'POST', body: {
+      loai: $('#ng_loai').value,
+      mo_ta: $('#ng_mo_ta').value.trim(),
+      nguoi_cung_cap: $('#ng_nguoi').value.trim() || null,
+      ngay_thu_thap: $('#ng_ngay').value || null,
+      media_id: $('#ng_media').value ? +$('#ng_media').value : null,
+      do_tin_cay: $('#ng_tin_cay').value } });
+    await api('/api/dan-nguon', { method: 'POST', body: {
+      nguon_id: r.id, nguoi_id: nguonCua.id,
+      truong: $('#ng_truong').value, trich: $('#ng_trich').value.trim() || null } });
+    $('#manNguon').classList.remove('mo');
+    await taiCay(); moChiTiet(nguonCua.id);
+  } catch (e) { $('#loiNguon').textContent = e.message; }
+  finally { b.disabled = false; }
+};
 
 async function xoa(id, ten) {
   if (!confirm(`Xoá ${ten} khỏi gia phả?`)) return;

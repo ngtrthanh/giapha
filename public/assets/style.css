@@ -249,3 +249,32 @@ body:has(#khungCay) { overflow:hidden; }
   .lich-d { font-size: 15px; }
   .lich-mui-ten { padding: 0 9px; font-size: 21px; }
 }
+
+/* ── Ngày tháng mờ ────────────────────────────────────────────── */
+.ngay-mo { display: flex; gap: 6px; }
+.ngay-mo select { width: auto; flex: 0 0 auto; }
+.ngay-mo input { flex: 1 1 auto; min-width: 0; }
+.ngay-doc { font-size: 12px; color: var(--ngoc); min-height: 16px; margin-top: 4px; }
+
+/* ── Nguồn dẫn ────────────────────────────────────────────────── */
+.khoi-nguon { margin-top: 20px; border-top: 1px solid var(--vien); padding-top: 12px; }
+.nguon-dau { display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+             font-size: 11px; letter-spacing: .13em; text-transform: uppercase; color: var(--giay-mo); }
+.nguon-dau span { flex: 1; }
+.nut-nho { padding: 3px 9px; font-size: 11px; letter-spacing: .04em; }
+.nguon-trong { font-size: 13px; color: var(--giay-mo); font-style: italic;
+               padding: 9px 11px; border: 1px dashed var(--vien); }
+.nguon-dong { border-left: 2px solid var(--vien); padding: 8px 0 8px 11px; margin-bottom: 8px; }
+.nguon-dong.tc-cao  { border-left-color: var(--ngoc); }
+.nguon-dong.tc-thap { border-left-color: #d98b7f; }
+.nguon-tren { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.nguon-truong { font-size: 12px; color: var(--vang); }
+.nguon-tc { font-size: 11px; color: var(--giay-mo); margin-left: auto; }
+.nguon-mota { font-size: 13px; margin-top: 4px; }
+.nguon-trich { font-size: 13px; color: var(--giay-mo); font-style: italic;
+               border-left: 2px solid var(--vien); padding-left: 9px; margin-top: 5px; }
+.nguon-ai { font-size: 11px; color: var(--giay-mo); margin-top: 4px; }
+.dau-bia { position: absolute; top: 3px; right: 4px; font-size: 9px; letter-spacing: .1em;
+           background: rgba(8,6,5,.75); color: var(--ngoc); padding: 1px 4px; pointer-events: none; }
+.chu-bia { font-size: 10px; color: var(--giay-mo); margin-top: 3px; line-height: 1.35;
+           max-height: 42px; overflow: hidden; }

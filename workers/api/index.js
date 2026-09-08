@@ -41,7 +41,13 @@ const log = (env, bang, ban_ghi, hanh_dong, boi, chi_tiet) =>
 
 // ── Validate ──────────────────────────────────────────────────────────────────
 const FIELDS = ["ho_ten","ten_khac","gioi_tinh","doi","pha_id","chi","cha_id","me_id","ngay_sinh","ngay_mat",
+                "sinh_kieu","sinh_den","sinh_goc","mat_kieu","mat_den","mat_goc",
                 "gio_ngay","gio_thang","gio_nhuan","noi_an_tang","mo_lat","mo_lng","ghi_chu"];
+
+// Ngày dương chấp nhận thiếu vế: '1890', '1890-03', '1890-03-12'.
+// Người nhà biết "khoảng 1890" thì phải ghi được đúng thế, đừng ép họ bịa ra ngày cho đủ.
+const NGAY_MO = /^\d{4}(-\d{2}(-\d{2})?)?$/;
+const KIEU_NGAY = ["chinh_xac","khoang","truoc","sau","giua","khong_ro"];
 
 // ── Phạm vi sửa ───────────────────────────────────────────────────────────────
 // admin: toàn quyền. chi_sua = 0: chỉ xem. chi = NULL: sửa toàn cây.
@@ -80,8 +86,14 @@ function clean(body) {
   if ("ho_ten" in o && !String(o.ho_ten || "").trim()) return { error: "Thiếu họ tên" };
   if ("gioi_tinh" in o && o.gioi_tinh && !["nam","nu","khac"].includes(o.gioi_tinh))
     return { error: "Giới tính không hợp lệ" };
-  for (const d of ["ngay_sinh","ngay_mat"])
-    if (o[d] && !/^\d{4}-\d{2}-\d{2}$/.test(o[d])) return { error: `${d} phải dạng YYYY-MM-DD` };
+  for (const d of ["ngay_sinh","ngay_mat","sinh_den","mat_den"])
+    if (o[d] && !NGAY_MO.test(o[d])) return { error: `${d} phải dạng YYYY, YYYY-MM hoặc YYYY-MM-DD` };
+  for (const k of ["sinh_kieu","mat_kieu"])
+    if (o[k] && !KIEU_NGAY.includes(o[k])) return { error: `${k} không hợp lệ` };
+  for (const [k, d, den] of [["sinh_kieu","ngay_sinh","sinh_den"], ["mat_kieu","ngay_mat","mat_den"]]) {
+    if (o[k] === "giua" && !(o[d] && o[den])) return { error: `Khoảng "giữa" cần cả hai mốc` };
+    if (o[k] === "giua" && o[d] > o[den]) return { error: `Mốc đầu phải trước mốc sau` };
+  }
   if (o.gio_ngay != null && (o.gio_ngay < 1 || o.gio_ngay > 30)) return { error: "Ngày giỗ âm 1–30" };
   if (o.gio_thang != null && (o.gio_thang < 1 || o.gio_thang > 12)) return { error: "Tháng giỗ âm 1–12" };
   return { data: o };
@@ -116,12 +128,17 @@ async function getCay(env) {
   const [ng, hn, md, ch] = await Promise.all([
     env.DB.prepare(`SELECT * FROM nguoi ORDER BY doi, id`).all(),
     env.DB.prepare(`SELECT * FROM hon_nhan ORDER BY chong_id, thu_tu`).all(),
-    env.DB.prepare(`SELECT id, nguoi_id, loai, ten_file, mo_ta, dai_dien, tao_luc FROM media ORDER BY id`).all(),
+    env.DB.prepare(`SELECT id, nguoi_id, loai, ten_file, mo_ta, dai_dien, chu_tren_bia, tao_luc
+                      FROM media ORDER BY id`).all(),
     env.DB.prepare(`SELECT khoa, gia_tri FROM cau_hinh`).all(),
   ]);
-  const ph = await env.DB.prepare(`SELECT * FROM pha ORDER BY thu_tu, id`).all();
+  const [ph, ngn, dn] = await Promise.all([
+    env.DB.prepare(`SELECT * FROM pha ORDER BY thu_tu, id`).all(),
+    env.DB.prepare(`SELECT * FROM nguon ORDER BY id`).all(),
+    env.DB.prepare(`SELECT * FROM dan_nguon ORDER BY id`).all(),
+  ]);
   return json({ ok: true, nguoi: ng.results, hon_nhan: hn.results, media: md.results,
-                pha: ph.results,
+                pha: ph.results, nguon: ngn.results, dan_nguon: dn.results,
                 cau_hinh: Object.fromEntries(ch.results.map((r) => [r.khoa, r.gia_tri])) });
 }
 
@@ -324,12 +341,22 @@ async function taiMedia(id, env) {
   return new Response(obj.body, { headers: h });
 }
 
-// Đổi ảnh đại diện: PATCH /api/media/:id  { dai_dien: 1 | 0 }
+// PATCH /api/media/:id — đổi ảnh đại diện { dai_dien: 1|0 },
+// hoặc chép chữ trên bia { chu_tren_bia, mo_ta }
 async function suaMedia(id, request, env, me) {
   const row = await env.DB.prepare(`SELECT nguoi_id, loai FROM media WHERE id = ?`).bind(id).first();
   if (!row) return err("Không tìm thấy", 404);
   if (!(await trongPhamVi(row.nguoi_id, env, me))) return err(NGOAI, 403);
   const b = await request.json().catch(() => ({}));
+
+  if ("chu_tren_bia" in b || "mo_ta" in b) {
+    await env.DB.prepare(
+      `UPDATE media SET chu_tren_bia = COALESCE(?, chu_tren_bia), mo_ta = COALESCE(?, mo_ta) WHERE id = ?`
+    ).bind(b.chu_tren_bia ?? null, b.mo_ta ?? null, id).run();
+    await log(env, "media", id, "sua", me.ten, "chép chữ trên ảnh");
+    if (!("dai_dien" in b)) return json({ ok: true });
+  }
+
   const dd = b.dai_dien;
   if (dd !== 0 && dd !== 1) return err("dai_dien chỉ nhận 0 hoặc 1");
   if (dd === 1 && row.loai !== "anh") return err("Chỉ ảnh mới đặt làm đại diện được");
@@ -349,6 +376,63 @@ async function xoaMedia(id, env, me) {
   await env.MEDIA.delete(row.r2_key);
   await env.DB.prepare(`DELETE FROM media WHERE id = ?`).bind(id).run();
   await log(env, "media", id, "xoa", me.ten, null);
+  return json({ ok: true });
+}
+
+// ── Nguồn dẫn ─────────────────────────────────────────────────────────────────
+const LOAI_NGUON = ["bia_mo","loi_ke","giay_to","pha_cu","anh","suy_doan","khac"];
+const TIN_CAY = ["cao","vua","thap"];
+
+async function themNguon(request, env, me) {
+  const b = await request.json().catch(() => ({}));
+  if (!LOAI_NGUON.includes(b.loai)) return err("Loại nguồn không hợp lệ");
+  if (!String(b.mo_ta || "").trim()) return err("Nguồn phải có mô tả — sau này chính bạn cần đọc lại");
+  if (b.do_tin_cay && !TIN_CAY.includes(b.do_tin_cay)) return err("Độ tin cậy không hợp lệ");
+  const r = await env.DB.prepare(
+    `INSERT INTO nguon (loai, mo_ta, nguoi_cung_cap, ngay_thu_thap, media_id, do_tin_cay, ghi_chu)
+     VALUES (?,?,?,?,?,?,?)`
+  ).bind(b.loai, String(b.mo_ta).trim(), b.nguoi_cung_cap || me.ten,
+         b.ngay_thu_thap || null, b.media_id ?? null, b.do_tin_cay || "vua", b.ghi_chu || null).run();
+  await log(env, "nguon", r.meta.last_row_id, "them", me.ten, b.mo_ta);
+  return json({ ok: true, id: r.meta.last_row_id }, 201);
+}
+
+async function xoaNguon(id, env, me) {
+  // Xoá cả phần dẫn: CSDL nâng cấp từ bản cũ không có khoá ngoại nên không tự dọn,
+  // để sót lại thì bảng chi tiết hiện dòng trống.
+  await env.DB.prepare(`DELETE FROM dan_nguon WHERE nguon_id = ?`).bind(id).run();
+  const r = await env.DB.prepare(`DELETE FROM nguon WHERE id = ?`).bind(id).run();
+  if (r.meta.changes === 0) return err("Không tìm thấy", 404);
+  await log(env, "nguon", id, "xoa", me.ten, null);
+  return json({ ok: true });
+}
+
+// Gắn nguồn vào một trường của một người
+async function themDanNguon(request, env, me) {
+  const b = await request.json().catch(() => ({}));
+  const nguoi_id = parseInt(b.nguoi_id), nguon_id = parseInt(b.nguon_id);
+  if (!nguoi_id || !nguon_id) return err("Thiếu nguoi_id hoặc nguon_id");
+  if (!FIELDS.includes(b.truong)) return err("Trường không hợp lệ");
+  if (!(await trongPhamVi(nguoi_id, env, me))) return err(NGOAI, 403);
+  const co = await env.DB.prepare(`SELECT id FROM nguon WHERE id = ?`).bind(nguon_id).first();
+  if (!co) return err("Nguồn không tồn tại", 404);
+  try {
+    const r = await env.DB.prepare(
+      `INSERT INTO dan_nguon (nguon_id, nguoi_id, truong, trich) VALUES (?,?,?,?)`
+    ).bind(nguon_id, nguoi_id, b.truong, b.trich || null).run();
+    await log(env, "dan_nguon", r.meta.last_row_id, "them", me.ten, `${b.truong} #${nguoi_id}`);
+    return json({ ok: true, id: r.meta.last_row_id }, 201);
+  } catch (e) {
+    return err("Nguồn này đã dẫn cho trường đó rồi");
+  }
+}
+
+async function xoaDanNguon(id, env, me) {
+  const row = await env.DB.prepare(`SELECT nguoi_id FROM dan_nguon WHERE id = ?`).bind(id).first();
+  if (!row) return err("Không tìm thấy", 404);
+  if (!(await trongPhamVi(row.nguoi_id, env, me))) return err(NGOAI, 403);
+  await env.DB.prepare(`DELETE FROM dan_nguon WHERE id = ?`).bind(id).run();
+  await log(env, "dan_nguon", id, "xoa", me.ten, null);
   return json({ ok: true });
 }
 
@@ -590,6 +674,23 @@ export default {
           return m === "PATCH" ? suaHonNhan(hid, request, env, me) : xoaHonNhan(hid, env, me);
         }
       }
+
+      if (p === "/api/nguon") {
+        if (m === "GET") {
+          const r = await env.DB.prepare(`SELECT * FROM nguon ORDER BY id DESC`).all();
+          return json({ ok: true, data: r.results });
+        }
+        if (m === "POST") return canEdit ? themNguon(request, env, me) : err("Không có quyền sửa", 403);
+      }
+      mm = p.match(/^\/api\/nguon\/(\d+)$/);
+      if (mm && m === "DELETE")
+        return canEdit ? xoaNguon(parseInt(mm[1]), env, me) : err("Không có quyền sửa", 403);
+
+      if (p === "/api/dan-nguon" && m === "POST")
+        return canEdit ? themDanNguon(request, env, me) : err("Không có quyền sửa", 403);
+      mm = p.match(/^\/api\/dan-nguon\/(\d+)$/);
+      if (mm && m === "DELETE")
+        return canEdit ? xoaDanNguon(parseInt(mm[1]), env, me) : err("Không có quyền sửa", 403);
 
       if (p === "/api/media" && m === "POST")
         return canEdit ? themMedia(request, env, me) : err("Không có quyền sửa", 403);

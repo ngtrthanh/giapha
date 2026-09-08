@@ -21,3 +21,34 @@ UPDATE pha SET ten    = COALESCE((SELECT gia_tri FROM cau_hinh WHERE khoa = 'tie
                phu_de = COALESCE((SELECT gia_tri FROM cau_hinh WHERE khoa = 'phu_de'), phu_de)
  WHERE id = 1 AND ten = 'Gia phả dòng họ';
 UPDATE nguoi SET pha_id = 1 WHERE pha_id IS NULL;
+
+-- Ngày tháng mờ: cho phép ghi "khoảng", "trước", "sau", "chỉ biết năm", "không rõ"
+ALTER TABLE nguoi ADD COLUMN sinh_kieu TEXT NOT NULL DEFAULT 'chinh_xac';
+ALTER TABLE nguoi ADD COLUMN sinh_den  TEXT;
+ALTER TABLE nguoi ADD COLUMN sinh_goc  TEXT;
+ALTER TABLE nguoi ADD COLUMN mat_kieu  TEXT NOT NULL DEFAULT 'chinh_xac';
+ALTER TABLE nguoi ADD COLUMN mat_den   TEXT;
+ALTER TABLE nguoi ADD COLUMN mat_goc   TEXT;
+ALTER TABLE media ADD COLUMN chu_tren_bia TEXT;
+CREATE TABLE IF NOT EXISTS nguon (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  loai TEXT NOT NULL,
+  mo_ta TEXT NOT NULL,
+  nguoi_cung_cap TEXT,
+  ngay_thu_thap TEXT,
+  media_id INTEGER,
+  do_tin_cay TEXT NOT NULL DEFAULT 'vua',
+  ghi_chu TEXT,
+  tao_luc TEXT NOT NULL DEFAULT (datetime('now','+7 hours'))
+);
+CREATE TABLE IF NOT EXISTS dan_nguon (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  nguon_id INTEGER NOT NULL,
+  nguoi_id INTEGER NOT NULL,
+  truong TEXT NOT NULL,
+  trich TEXT,
+  tao_luc TEXT NOT NULL DEFAULT (datetime('now','+7 hours')),
+  UNIQUE(nguon_id, nguoi_id, truong)
+);
+CREATE INDEX IF NOT EXISTS idx_dan_nguon_nguoi ON dan_nguon(nguoi_id);
+CREATE INDEX IF NOT EXISTS idx_nguon_media ON nguon(media_id);
