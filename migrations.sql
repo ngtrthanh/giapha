@@ -30,25 +30,9 @@ ALTER TABLE nguoi ADD COLUMN mat_kieu  TEXT NOT NULL DEFAULT 'chinh_xac';
 ALTER TABLE nguoi ADD COLUMN mat_den   TEXT;
 ALTER TABLE nguoi ADD COLUMN mat_goc   TEXT;
 ALTER TABLE media ADD COLUMN chu_tren_bia TEXT;
-CREATE TABLE IF NOT EXISTS nguon (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  loai TEXT NOT NULL,
-  mo_ta TEXT NOT NULL,
-  nguoi_cung_cap TEXT,
-  ngay_thu_thap TEXT,
-  media_id INTEGER,
-  do_tin_cay TEXT NOT NULL DEFAULT 'vua',
-  ghi_chu TEXT,
-  tao_luc TEXT NOT NULL DEFAULT (datetime('now','+7 hours'))
-);
-CREATE TABLE IF NOT EXISTS dan_nguon (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  nguon_id INTEGER NOT NULL,
-  nguoi_id INTEGER NOT NULL,
-  truong TEXT NOT NULL,
-  trich TEXT,
-  tao_luc TEXT NOT NULL DEFAULT (datetime('now','+7 hours')),
-  UNIQUE(nguon_id, nguoi_id, truong)
-);
+-- Hai lệnh dưới phải nằm gọn MỘT DÒNG: deploy.sh và deploy.bat nạp file này
+-- theo từng dòng, lệnh trải nhiều dòng sẽ bị cắt vụn và chạy hỏng.
+CREATE TABLE IF NOT EXISTS nguon (id INTEGER PRIMARY KEY AUTOINCREMENT, loai TEXT NOT NULL, mo_ta TEXT NOT NULL, nguoi_cung_cap TEXT, ngay_thu_thap TEXT, media_id INTEGER, do_tin_cay TEXT NOT NULL DEFAULT 'vua', ghi_chu TEXT, tao_luc TEXT NOT NULL DEFAULT (datetime('now','+7 hours')));
+CREATE TABLE IF NOT EXISTS dan_nguon (id INTEGER PRIMARY KEY AUTOINCREMENT, nguon_id INTEGER NOT NULL, nguoi_id INTEGER NOT NULL, truong TEXT NOT NULL, trich TEXT, tao_luc TEXT NOT NULL DEFAULT (datetime('now','+7 hours')), UNIQUE(nguon_id, nguoi_id, truong));
 CREATE INDEX IF NOT EXISTS idx_dan_nguon_nguoi ON dan_nguon(nguoi_id);
 CREATE INDEX IF NOT EXISTS idx_nguon_media ON nguon(media_id);
