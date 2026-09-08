@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quản trị — Gia Phả</title>
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<header>
+  <h1>QUẢN TRỊ<small>Phả · người dùng · nhật ký</small></h1>
+  <nav>
+    <a href="/">Cây phả hệ</a>
+    <a href="/gio.html">Ngày giỗ</a>
+    <a href="/lich.html">Lịch vạn niên</a>
+    <a href="/admin.html" class="active">Quản trị</a>
+  </nav>
+</header>
+
+<div class="trang">
+  <div id="chan" class="trong">Đang kiểm tra quyền…</div>
+
+  <div id="noiDung" style="display:none">
+    <h3 style="font-family:var(--serif);color:var(--vang)">Các phả</h3>
+    <div id="dsPha" style="margin-bottom:18px"></div>
+    <div class="dong-nut" style="margin-top:0">
+      <button id="btTinhDoi">Tính lại số đời toàn bộ</button>
+      <span id="ttDoi" style="font-size:13px;color:var(--ngoc);align-self:center"></span>
+    </div>
+    <div class="luoi-2" style="align-items:end;gap:0 12px">
+      <div><label>Thêm phả — tên</label><input id="p_ten" placeholder="Gia phả họ Trần (ngoại)"></div>
+      <div><label>Phụ đề</label><input id="p_phu_de" placeholder="Họ ngoại bên mẹ — Kiến Thuỵ"></div>
+    </div>
+    <div class="dong-nut"><button class="chinh" id="btThemP">Thêm phả</button></div>
+    <div class="loi" id="loiP"></div>
+
+    <h3 style="font-family:var(--serif);color:var(--vang);margin-top:44px">Người nhập liệu</h3>
+    <div class="luoi-2" style="align-items:end;gap:0 12px">
+      <div><label>Tên</label><input id="u_ten"></div>
+      <div><label>Mã truy cập (≥ 8 ký tự)</label><input id="u_token"></div>
+      <div><label>Quyền</label><select id="u_quyen">
+        <option value="sua">Sửa trong phả/chi</option>
+        <option value="toan">Sửa toàn cây</option>
+        <option value="xem">Chỉ xem</option>
+        <option value="admin">Admin</option></select></div>
+      <div><label>Phả</label><select id="u_pha"></select></div>
+      <div><label>Chi / nhánh (để trống = cả phả)</label><input id="u_chi" list="dsChi2"><datalist id="dsChi2"></datalist></div>
+      <div><label class="hop-chon" style="margin:12px 0 0"><input type="checkbox" id="u_taopha">
+        Được mở phả riêng</label></div>
+      <div style="padding-bottom:1px"><button class="chinh" id="btThemU" style="width:100%">Thêm</button></div>
+    </div>
+    <div class="loi" id="loiU"></div>
+
+    <table style="margin-top:16px">
+      <thead><tr><th>Tên</th><th>Quyền</th><th>Phạm vi</th><th>Tạo lúc</th><th></th></tr></thead>
+      <tbody id="tbU"></tbody>
+    </table>
+
+    <h3 style="font-family:var(--serif);color:var(--vang);margin-top:44px">Nhật ký thay đổi</h3>
+    <table>
+      <thead><tr><th>Lúc</th><th>Bởi</th><th>Hành động</th><th>Bảng</th><th>Chi tiết</th></tr></thead>
+      <tbody id="tbL"></tbody>
+    </table>
+  </div>
+</div>
+
+<script type="module">
+import { api, toi, esc } from '/assets/api.js';
+const $ = (s) => document.querySelector(s);
+
+const HD = { them: 'Thêm', sua: 'Sửa', xoa: 'Xoá' };
+let PHA = [], NGUOI = [];
+function hienLoi(e) { $('#chan').style.display = ''; $('#chan').textContent = 'Không tải được dữ liệu: ' + e.message; }
+
+async function tai() {
+  if (!toi()) { location.href = '/'; return; }
+  if (toi().quyen !== 'admin') { $('#chan').textContent = 'Chỉ tài khoản admin mới xem được trang này.'; return; }
+  $('#chan').style.display = 'none';
+  $('#noiDung').style.display = '';
+
+
+  const cay = await api('/api/cay');
+  PHA = cay.pha || [];
+  NGUOI = cay.nguoi;
+  $('#dsPha').innerHTML = PHA.map(p => {
+    const ds = cay.nguoi.filter(n => n.pha_id === p.id);
+    const trong = new Set(ds.map(n => n.id));
+    // gốc của một cây = người không có cha lẫn mẹ nằm trong cùng phả
+    const goc = ds.filter(n => !(n.cha_id && trong.has(n.cha_id)) && !(n.me_id && trong.has(n.me_id)));
+    const conChau = (id, ra = new Set()) => {
+      for (const c of ds) if ((c.cha_id === id || c.me_id === id) && !ra.has(c.id)) { ra.add(c.id); conChau(c.id, ra); }
+      return ra;
+    };
+    const doiMax = ds.length ? Math.max(...ds.map(n => n.doi || 0)) : 0;
+    const chi = [...new Set(ds.map(n => n.chi).filter(Boolean))];
+    return `<div style="border:1px solid var(--vien);border-left:2px solid var(--vang);
+                 padding:14px 16px;margin-bottom:10px">
+      <div class="luoi-2" style="gap:0 12px;align-items:end">
+        <div><label style="margin-top:0">Tên phả</label>
+             <input value="${(p.ten || '').replace(/"/g, '&quot;')}" data-ten="${p.id}"></div>
+        <div><label style="margin-top:0">Phụ đề</label>
+             <input value="${(p.phu_de || '').replace(/"/g, '&quot;')}" data-phude="${p.id}"></div>
+      </div>
+      <div class="dong-nut" style="margin-top:10px">
+        <button data-lp="${p.id}">Lưu tên</button>
+        <button class="nguy" data-xp="${p.id}" ${ds.length ? 'disabled title="Phả còn người"' : ''}>Xoá phả</button>
+        <span style="color:var(--giay-mo);font-size:12px;align-self:center">
+          <a href="/?pha=${p.id}" class="nut">Xem cây</a> · mã ${esc(p.ma)} · ${ds.length} người · ${doiMax} đời${chi.length ? ' · chi: ' + chi.join(', ') : ''}</span>
+      </div>
+      <div style="height:10px"></div>
+      ${goc.length ? `<table style="margin:0"><thead><tr>
+          <th>Cây (gốc)</th><th>Đời</th><th>Con cháu</th><th>Chi</th></tr></thead><tbody>
+        ${goc.map(g => `<tr><td><a href="/?pha=${p.id}#${g.id}" style="color:var(--giay);text-decoration:none">${esc(g.ho_ten)}</a></td>
+          <td>${g.doi ?? '—'}</td><td>${conChau(g.id).size}</td>
+          <td style="color:var(--giay-mo)">${g.chi || '—'}</td></tr>`).join('')}
+        </tbody></table>`
+        : '<div class="trong" style="padding:14px">Phả này chưa có ai.</div>'}
+    </div>`;
+  }).join('');
+  document.querySelectorAll('[data-lp]').forEach(b => b.onclick = async () => {
+    const id = b.dataset.lp;
+    try {
+      await api('/api/pha/' + id, { method: 'PATCH', body: {
+        ten: document.querySelector(`[data-ten="${id}"]`).value.trim(),
+        phu_de: document.querySelector(`[data-phude="${id}"]`).value.trim() } });
+      $('#loiP').style.color = 'var(--ngoc)';
+      $('#loiP').textContent = 'Đã lưu tên phả.';
+      tai().catch(hienLoi);
+    } catch (e) { $('#loiP').style.color = ''; $('#loiP').textContent = e.message; }
+  });
+  document.querySelectorAll('[data-xp]').forEach(b => b.onclick = async () => {
+    if (!confirm('Xoá phả này?')) return;
+    try { await api('/api/pha/' + b.dataset.xp, { method: 'DELETE' }); tai().catch(hienLoi); }
+    catch (e) { $('#loiP').textContent = e.message; }
+  });
+  $('#u_pha').innerHTML = PHA.map(p => `<option value="${p.id}">${esc(p.ten)}</option>`).join('');
+  $('#dsChi2').innerHTML = [...new Set(cay.nguoi.map(x => x.chi).filter(Boolean))]
+    .map(c => `<option value="${c}">`).join('');
+
+  const u = await api('/api/nguoi-dung');
+  const nhan = (x) => x.quyen === 'admin' ? 'admin' : x.chi_sua === 0 ? 'chỉ xem' : 'sửa';
+  const tenPha = (id) => PHA.find(p => p.id === id)?.ten || 'mọi phả';
+  const pv = (x) => {
+    if (x.quyen === 'admin') return 'mọi phả';
+    if (x.chi_sua === 0) return '—';
+    const ds = [...(x.pha_id ? [x.pha_id] : []), ...(x.pha_them || [])];
+    return (ds.length ? ds.map(tenPha).join(', ') : 'mọi phả')
+      + (x.chi ? ' · chi ' + x.chi : '') + (x.tao_pha ? ' · mở phả riêng' : '');
+  };
+  $('#tbU').innerHTML = u.data.length ? u.data.map(x => `
+    <tr><td>${esc(x.ten)}</td><td><span class="the">${nhan(x)}</span></td>
+        <td>${pv(x)}</td>
+        <td style="color:var(--giay-mo)">${x.tao_luc}</td>
+        <td style="text-align:right"><button class="nguy" data-x="${x.id}">Xoá</button></td></tr>`).join('')
+    : '<tr><td colspan="5" class="trong">Chưa có ai ngoài admin gốc.</td></tr>';
+  document.querySelectorAll('[data-x]').forEach(b => b.onclick = async () => {
+    if (!confirm('Xoá người dùng này?')) return;
+    await api('/api/nguoi-dung/' + b.dataset.x, { method: 'DELETE' }); tai().catch(hienLoi);
+  });
+
+  const l = await api('/api/nhat-ky');
+  $('#tbL').innerHTML = l.data.length ? l.data.map(x => `
+    <tr><td style="color:var(--giay-mo)">${x.luc}</td><td>${esc(x.boi)}</td>
+        <td>${HD[x.hanh_dong]}</td><td>${x.bang} #${x.ban_ghi ?? ''}</td>
+        <td style="color:var(--giay-mo)">${esc(x.chi_tiet ?? '')}</td></tr>`).join('')
+    : '<tr><td colspan="5" class="trong">Chưa có thay đổi nào.</td></tr>';
+}
+
+$('#btTinhDoi').onclick = async () => {
+  $('#ttDoi').textContent = 'Đang tính…';
+  try {
+    const r = await api('/api/tinh-doi', { method: 'POST' });
+    $('#ttDoi').textContent = r.so_nguoi ? `Đã cập nhật ${r.so_nguoi} người.` : 'Mọi số đời đã đúng.';
+    tai().catch(hienLoi);
+  } catch (e) { $('#ttDoi').textContent = e.message; }
+};
+
+$('#btThemP').onclick = async () => {
+  $('#loiP').textContent = '';
+  try {
+    await api('/api/pha', { method: 'POST', body: {
+      ten: $('#p_ten').value.trim(), phu_de: $('#p_phu_de').value.trim() } });
+    $('#p_ten').value = ''; $('#p_phu_de').value = '';
+    tai().catch(hienLoi);
+  } catch (e) { $('#loiP').textContent = e.message; }
+};
+
+$('#btThemU').onclick = async () => {
+  $('#loiU').textContent = '';
+  try {
+    const v = $('#u_quyen').value;
+
+    await api('/api/nguoi-dung', { method: 'POST', body: {
+      ten: $('#u_ten').value.trim(), token: $('#u_token').value.trim(),
+      quyen: v === 'admin' ? 'admin' : 'sua',
+      pha_id: v === 'sua' ? parseInt($('#u_pha').value) : null,
+      chi: v === 'sua' ? ($('#u_chi').value.trim() || null) : null,
+      chi_sua: v === 'xem' ? 0 : 1,
+      tao_pha: $('#u_taopha').checked ? 1 : 0 } });
+    $('#u_ten').value = ''; $('#u_token').value = ''; $('#u_chi').value = '';
+    $('#u_taopha').checked = false;
+    tai().catch(hienLoi);
+  } catch (e) { $('#loiU').textContent = e.message; }
+};
+
+tai().catch(hienLoi);
+
+for (const label of document.querySelectorAll('label:not([for])')) {
+  const control = label.nextElementSibling;
+  if (control?.matches('input[id], select[id], textarea[id]')) label.htmlFor = control.id;
+}
+</script>
+</body>
+</html>

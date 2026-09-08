@@ -1,0 +1,11 @@
+.env
+wrangler.toml
+node_modules/
+.wrangler/
+*.log
+dist/
+.dev.vars
+backup/
+_dong-bo.sql
+output/
+.playwright-cli/

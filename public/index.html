@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gia Phả</title>
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<header>
+  <h1 id="tieuDe">GIA PHẢ<small id="phuDe">&nbsp;</small></h1>
+  <nav>
+    <button id="btDanhSachPha">Danh sách gia phả</button>
+    <select aria-label="Gia phả đang xem" id="chonPha" style="width:auto;padding:6px 10px;font-size:13px"></select>
+    <a href="/" class="active">Cây phả hệ</a>
+    <a href="/gio.html">Ngày giỗ</a>
+    <a href="/lich.html">Lịch vạn niên</a>
+    <a href="/admin.html">Quản trị</a>
+    <span id="ai" style="color:var(--giay-mo);font-size:12px"></span>
+    <button id="btThoat" style="padding:4px 10px">Thoát</button>
+  </nav>
+</header>
+
+<div id="khungCay"><div class="trong" id="trong">Đang tải…</div></div>
+
+<div class="cong-cu">
+  <button id="btThem">+ Thêm người</button>
+  <button id="btPhong">＋</button>
+  <button id="btThu">－</button>
+  <button id="btVua">Vừa màn hình</button>
+  <label class="hop-chon" style="margin:0"><input type="checkbox" id="cbCardDoc"> Card dọc</label>
+  <label class="hop-chon" style="margin:0;padding:5px 10px" title="Cháu ngoại đã sang phả khác">
+    <input type="checkbox" id="cbNgoai"> Con cháu ngoại phả</label>
+  <button id="btThoatTam" style="display:none">← Cây đầy đủ</button>
+</div>
+
+<div id="loiKetNoi" role="alert" hidden></div>
+<div class="man" id="manDanhSachPha"><div class="hop">
+  <h3>Danh sách gia phả</h3><div id="danhSachPha"></div>
+  <div class="dong-nut"><a href="/admin.html" class="nut" id="quanLyPha">Quản lý gia phả</a><button id="dongDanhSachPha">Đóng</button></div>
+</div></div>
+<!-- Bảng chi tiết -->
+<aside id="bang"></aside>
+
+<!-- Đăng nhập -->
+<div class="man" id="manDangNhap">
+  <div class="hop" style="width:400px">
+    <h3>Đăng nhập</h3>
+    <p style="color:var(--giay-mo);font-size:13px;margin:0">Nhập mã do người quản trị dòng họ cấp.</p>
+    <label>Mã truy cập</label>
+    <input type="password" id="oMa" autocomplete="current-password">
+    <div class="loi" id="loiDN"></div>
+    <div class="dong-nut"><button class="chinh" id="btDN">Vào</button></div>
+  </div>
+</div>
+
+<!-- Thêm / sửa người -->
+<div class="man" id="manNguoi">
+  <div class="hop">
+    <h3 id="tieuDeNguoi">Thêm người</h3>
+    <div class="luoi-2">
+      <div><label>Họ và tên *</label><input id="f_ho_ten"></div>
+      <div><label>Tên khác (húy/tự/hiệu)</label><input id="f_ten_khac"></div>
+      <div><label>Giới tính</label><select id="f_gioi_tinh">
+        <option value="nam">Nam</option><option value="nu">Nữ</option><option value="khac">Khác</option>
+      </select></div>
+      <div><label>Đời thứ — tự tính</label><input id="f_doi" type="number" min="1"></div>
+      <div><label>Phả</label><select id="f_pha_id"></select></div>
+      <div><label>Chi / nhánh</label><input id="f_chi" list="dsChi"></div>
+      <datalist id="dsChi"></datalist>
+      <div><label>Cha</label><select id="f_cha_id"></select></div>
+      <div><label>Mẹ</label><select id="f_me_id"></select></div>
+    </div>
+    <label>Ngày sinh (dương)</label><input id="f_ngay_sinh" type="date">
+
+    <label class="hop-chon"><input type="checkbox" id="f_da_mat"> Đã mất</label>
+
+    <div id="khoiMat" style="display:none">
+      <div class="luoi-2">
+        <div><label>Ngày mất (dương)</label><input id="f_ngay_mat" type="date"></div>
+        <div><label>Nơi an táng</label><input id="f_noi_an_tang"></div>
+        <div><label>Ngày giỗ (âm) — tự tính</label><input id="f_gio_ngay" type="number" min="1" max="30"></div>
+        <div><label>Tháng giỗ (âm) — tự tính</label><input id="f_gio_thang" type="number" min="1" max="12"></div>
+        <div><label>Vĩ độ mộ</label><input id="f_mo_lat" type="number" step="any" placeholder="20.8449"></div>
+        <div><label>Kinh độ mộ</label><input id="f_mo_lng" type="number" step="any" placeholder="106.6881"></div>
+      </div>
+      <div id="goiYGio" style="font-size:12px;color:var(--ngoc);margin-top:6px"></div>
+    </div>
+
+    <label>Ghi chú</label><textarea id="f_ghi_chu" rows="3"></textarea>
+    <div class="loi" id="loiNguoi"></div>
+    <div class="dong-nut">
+      <button class="chinh" id="btLuu">Lưu</button>
+      <button id="btHuy">Huỷ</button>
+    </div>
+  </div>
+</div>
+
+<!-- Thêm cha / mẹ (mở rộng lên đời trên) -->
+<div class="man" id="manChaMe">
+  <div class="hop" style="width:460px">
+    <h3 id="tdChaMe">Thêm đời trên</h3>
+    <p style="color:var(--giay-mo);font-size:13px;margin:0" id="ghiChaMe"></p>
+    <label>Vai trò</label>
+    <select id="cm_vai"><option value="cha_id">Cha</option><option value="me_id">Mẹ</option></select>
+    <label>Người</label>
+    <select id="cm_ai"></select>
+    <div id="cm_moi">
+      <label>Họ và tên người mới *</label><input id="cm_ten">
+      <label>Tên khác (húy/tự/hiệu)</label><input id="cm_ten_khac">
+    </div>
+    <div class="loi" id="loiCM"></div>
+    <div class="dong-nut"><button class="chinh" id="btLuuCM">Lưu</button><button id="btHuyCM">Huỷ</button></div>
+  </div>
+</div>
+
+<!-- Mở phả riêng cho một người -->
+<div class="man" id="manMP">
+  <div class="hop" style="width:520px">
+    <h3 id="tdMP">Mở phả riêng</h3>
+    <p style="color:var(--giay-mo);font-size:13px;margin:0" id="ghiMP"></p>
+    <label>Tên phả</label><input id="mp_ten" placeholder="Gia phả họ Lê — Kiến Thuỵ">
+    <label>Phụ đề</label><input id="mp_phu_de" placeholder="Họ ngoại bên vợ">
+    <label class="hop-chon"><input type="checkbox" id="mp_dau" checked>
+      Kèm dâu (vợ của nam giới trong nhánh)</label>
+    <div id="mp_xem" style="max-height:200px;overflow:auto;margin-top:8px;font-size:13px"></div>
+    <div class="loi" id="loiMP"></div>
+    <div class="dong-nut">
+      <button class="chinh" id="btLuuMP">Tạo phả và chuyển</button>
+      <button id="btHuyMP">Huỷ</button>
+    </div>
+  </div>
+</div>
+
+<!-- Chuyển nhánh sang phả khác -->
+<div class="man" id="manCP">
+  <div class="hop" style="width:520px">
+    <h3 id="tdCP">Chuyển sang phả khác</h3>
+    <p style="color:var(--giay-mo);font-size:13px;margin:0">
+      Nhánh tính theo dòng cha. Con của con gái không đi theo — cháu ngoại ở lại phả bên nội của chúng.</p>
+    <div class="luoi-2">
+      <div><label>Chuyển sang phả</label><select id="cp_pha"></select></div>
+      <div><label>Phạm vi</label><select id="cp_pv">
+        <option value="nhanh">Cả nhánh theo dòng cha</option>
+        <option value="mot">Chỉ người này</option>
+      </select></div>
+    </div>
+    <label class="hop-chon"><input type="checkbox" id="cp_dau" checked> Kèm dâu (vợ của nam giới trong nhánh)</label>
+    <div id="cp_xem" style="max-height:230px;overflow:auto;margin-top:10px;font-size:13px"></div>
+    <div class="loi" id="loiCP"></div>
+    <div class="dong-nut">
+      <button class="chinh" id="btLuuCP" disabled>Chuyển</button>
+      <button id="btHuyCP">Huỷ</button>
+    </div>
+  </div>
+</div>
+
+<!-- Thêm hôn nhân -->
+<div class="man" id="manHN">
+  <div class="hop" style="width:420px">
+    <h3>Thêm vợ / chồng</h3>
+    <div id="hn_canh" style="display:none">
+      <p style="font-size:13px;color:var(--giay-mo);margin:0 0 2px" id="hn_canh_txt"></p>
+      <label>Lý do khai thêm</label>
+      <select id="hn_lydo"></select>
+    </div>
+    <div id="hn_than">
+      <label>Người bạn đời</label><select id="hn_ai"></select>
+      <label class="hop-chon"><input type="checkbox" id="hn_tatca"> Hiện cả người cùng huyết thống</label>
+      <label>Thứ tự (1 = chính thất)</label><input id="hn_thu_tu" type="number" value="1" min="1">
+    </div>
+    <div class="loi" id="loiHN"></div>
+    <div class="dong-nut"><button class="chinh" id="btLuuHN">Lưu</button><button id="btHuyHN">Huỷ</button></div>
+  </div>
+</div>
+
+<script type="module">
+import { api, dangNhap, thoat, toi, anhURL, ngayVN, esc } from '/assets/api.js';
+import { boCuc, ve, nhanTuoi } from '/assets/cay.js';
+import { dungDoThi, nhanQuanHe, langGieng, noiToc, conChau, anhChiEm } from '/assets/dothi.js';
+import { duongSangAm, canChiNam, gioSapToi } from '/assets/amlich.js';
+
+const $ = (s) => document.querySelector(s);
+let DL = { nguoi: [], hon_nhan: [], media: [], pha: [] };
+let chon = null, suaId = null, zoom = 1;
+let phaHT = parseInt(new URLSearchParams(location.search).get('pha')) || parseInt(localStorage.getItem('gp_pha')) || null;   // phả đang xem
+function luuPha() {
+  localStorage.setItem('gp_pha', phaHT);
+  const url = new URL(location.href); url.searchParams.set('pha', phaHT); url.hash = '';
+  history.replaceState(null, '', url);
+}
+let tamId = null;                                              // người đang đặt làm trung tâm
+let G = dungDoThi([], []);                                     // đồ thị quan hệ
+
+// ── Đăng nhập ────────────────────────────────────────────────
+async function khoiDong() {
+  if (!toi()) { $('#manDangNhap').classList.add('mo'); return; }
+  $('#manDangNhap').classList.remove('mo');
+  const me = await api('/api/toi');
+  sessionStorage.setItem('gp_toi', JSON.stringify(me));
+  $('#btThem').style.display = duocSua() ? '' : 'none';
+  $('#ai').textContent = `${toi().ten} (${toi().quyen})`;
+  await taiCay();
+  const id = parseInt(location.hash.slice(1));
+  if (id) { const n = G.lay(id); if (n) { phaHT = n.pha_id; veCay(); moChiTiet(id); duaVaoGiua(id); } }
+}
+$('#btDN').onclick = async () => {
+  try { await dangNhap($('#oMa').value.trim()); await khoiDong(); }
+  catch (e) { $('#loiDN').textContent = e.message; }
+};
+$('#oMa').onkeydown = (e) => { if (e.key === 'Enter') $('#btDN').click(); };
+$('#btThoat').onclick = () => { thoat(); location.reload(); };
+
+// ── Tải & vẽ ─────────────────────────────────────────────────
+async function taiCay() {
+  try {
+    DL = await api('/api/cay');
+    G = dungDoThi(DL.nguoi, DL.hon_nhan);
+    $('#loiKetNoi').hidden = true;
+    veCay();
+  } catch (e) { hienLoiKetNoi(e); throw e; }
+}
+function hienLoiKetNoi(e) {
+  const el = $('#loiKetNoi'); el.hidden = false; el.textContent = e.message + ' ';
+  const b = document.createElement('button'); b.textContent = 'Thử lại'; b.onclick = () => taiCay().catch(() => {}); el.append(b);
+}
+function veCay() {
+  napBoChonPha();
+  if (!DL.nguoi.length) {
+    $('#khungCay').innerHTML = '<div class="trong">Chưa có ai trong gia phả. Bấm “+ Thêm người” để bắt đầu từ cụ tổ.</div>';
+    return;
+  }
+  // ảnh đại diện = ảnh được đánh dấu; chưa đánh dấu thì lấy ảnh đầu tiên
+  const dd = new Map();
+  for (const m of DL.media) if (m.loai === 'anh' && !dd.has(m.nguoi_id)) dd.set(m.nguoi_id, anhURL(m.id));
+  for (const m of DL.media) if (m.loai === 'anh' && m.dai_dien) dd.set(m.nguoi_id, anhURL(m.id));
+  const { nguoi, hon_nhan } = locTheoPha();
+  if (!nguoi.length) {
+    $('#khungCay').innerHTML = '<div class="trong">Phả này chưa có ai. Bấm “+ Thêm người” để bắt đầu từ cụ tổ.</div>';
+    return;
+  }
+  $('#khungCay').innerHTML = `<div id="canvas" style="transform-origin:0 0;padding:40px;width:max-content">
+    ${ve(boCuc(nguoi, hon_nhan, $('#cbCardDoc').checked), tamId || chon, (id) => dd.get(id),
+         tamId ? (id) => nhanQuanHe(G, tamId, id) : null)}</div>`;
+  apDungZoom();
+  document.querySelectorAll('.nut-nguoi').forEach((g) =>
+    { g.onclick = () => moChiTiet(parseInt(g.dataset.id));
+      g.onkeydown = (e) => { if (e.target !== g) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); g.click(); } }; });
+}
+// Cây của một phả = người thuộc phả đó + bạn đời (dù khác phả),
+// tuỳ chọn thêm con cháu đã sang phả khác (cháu ngoại).
+function locTheoPha() {
+  if (tamId) {                       // chế độ trung tâm: chỉ vùng quan hệ quanh một người
+    const hien = langGieng(G, tamId);
+    const nguoi = DL.nguoi.filter((n) => hien.has(n.id)).map((n) => ({
+      ...n,
+      cha_id: hien.has(n.cha_id) ? n.cha_id : null,
+      me_id: hien.has(n.me_id) ? n.me_id : null,
+    }));
+    return { nguoi, hon_nhan: DL.hon_nhan.filter((h) => hien.has(h.chong_id) && hien.has(h.vo_id)) };
+  }
+  if (!phaHT) return { nguoi: DL.nguoi, hon_nhan: DL.hon_nhan };
+  const hien = new Set(DL.nguoi.filter((n) => n.pha_id === phaHT).map((n) => n.id));
+  if ($('#cbNgoai')?.checked) {
+    for (let v = 0; v < 20; v++) {
+      let them = false;
+      for (const c of DL.nguoi)
+        if (!hien.has(c.id) && ((c.cha_id && hien.has(c.cha_id)) || (c.me_id && hien.has(c.me_id))))
+          { hien.add(c.id); them = true; }
+      if (!them) break;
+    }
+  }
+  for (const h of DL.hon_nhan) {          // kéo bạn đời vào, kể cả khác phả
+    if (hien.has(h.chong_id)) hien.add(h.vo_id);
+    else if (hien.has(h.vo_id)) hien.add(h.chong_id);
+  }
+  // cắt liên kết cha/mẹ trỏ ra ngoài để bố cục coi họ là dâu/rể gắn vào
+  const nguoi = DL.nguoi.filter((n) => hien.has(n.id)).map((n) => ({
+    ...n,
+    cha_id: hien.has(n.cha_id) ? n.cha_id : null,
+    me_id: hien.has(n.me_id) ? n.me_id : null,
+  }));
+  return { nguoi, hon_nhan: DL.hon_nhan.filter((h) => hien.has(h.chong_id) && hien.has(h.vo_id)) };
+}
+
+function napBoChonPha() {
+  const ds = DL.pha || [];
+  if (!phaHT || !ds.some((p) => p.id === phaHT)) phaHT = ds[0]?.id || null;
+  const dem = {};
+  for (const n of DL.nguoi) dem[n.pha_id] = (dem[n.pha_id] || 0) + 1;
+  $('#chonPha').innerHTML = ds.map((p) =>
+    `<option value="${p.id}" ${p.id === phaHT ? 'selected' : ''}>${esc(p.ten)} (${dem[p.id] || 0})</option>`)
+    .join('');
+  $('#chonPha').style.display = '';
+  const p = ds.find((x) => x.id === phaHT);
+  if (p) {
+    $('#tieuDe').firstChild.textContent = p.ten.toUpperCase();
+    $('#phuDe').textContent = p.phu_de || '\u00a0';
+    document.title = p.ten;
+  }
+}
+$('#chonPha').onchange = () => {
+  phaHT = parseInt($('#chonPha').value);
+  luuPha();
+  chon = null; $('#bang').classList.remove('mo');
+  veCay();
+};
+$('#cbNgoai').onchange = veCay;
+$('#cbCardDoc').checked = localStorage.getItem('gp_card_doc') === '1';
+$('#cbCardDoc').onchange = () => { localStorage.setItem('gp_card_doc', $('#cbCardDoc').checked ? '1' : '0'); veCay(); $('#btVua').click(); if (tamId) requestAnimationFrame(() => duaVaoGiua(tamId)); };
+// Số cây của một phả = số mảng liên thông, nối bằng cha/mẹ và vợ/chồng.
+// Không đếm theo "người không có cha mẹ trong phả": dâu/rể cưới vào cũng không có
+// cha mẹ trong phả nên cách đó đếm mỗi người ấy thành một cây riêng.
+function soCay(ds) {
+  const trong = new Set(ds.map((n) => n.id));
+  const ke = new Map(ds.map((n) => [n.id, []]));
+  const noi = (a, b) => { if (trong.has(a) && trong.has(b)) { ke.get(a).push(b); ke.get(b).push(a); } };
+  for (const n of ds) { if (n.cha_id) noi(n.id, n.cha_id); if (n.me_id) noi(n.id, n.me_id); }
+  for (const h of DL.hon_nhan) noi(h.chong_id, h.vo_id);
+  const tham = new Set(); let c = 0;
+  for (const n of ds) {
+    if (tham.has(n.id)) continue;
+    c++; const q = [n.id]; tham.add(n.id);
+    while (q.length) { const x = q.pop(); for (const y of ke.get(x)) if (!tham.has(y)) { tham.add(y); q.push(y); } }
+  }
+  return c;
+}
+$('#btDanhSachPha').onclick = () => {
+  const root = $('#danhSachPha'); root.replaceChildren();
+  for (const p of DL.pha) {
+    const ds = DL.nguoi.filter((n) => n.pha_id === p.id);
+    const dangXem = p.id === phaHT;
+    const b = document.createElement('button'); b.className = 'pha-lua-chon';
+    if (dangXem) { b.classList.add('dang-xem'); b.setAttribute('aria-current', 'true'); }
+    const ten = document.createElement('div'); ten.className = 'pha-ten'; ten.textContent = p.ten;
+    b.append(ten);
+    if (p.phu_de) {
+      const pd = document.createElement('div'); pd.className = 'pha-phu'; pd.textContent = p.phu_de;
+      b.append(pd);
+    }
+    const dem = document.createElement('div'); dem.className = 'pha-dem';
+    dem.textContent = `${ds.length} người · ${soCay(ds)} cây` + (dangXem ? ' · đang xem' : '');
+    b.append(dem);
+    b.onclick = () => { tamId = null; $('#btThoatTam').style.display = 'none'; $('#chonPha').disabled = $('#cbNgoai').disabled = false;
+      phaHT = p.id; luuPha(); chon = null; $('#bang').classList.remove('mo'); $('#manDanhSachPha').classList.remove('mo'); veCay(); $('#btVua').click(); };
+    root.append(b);
+  }
+  $('#quanLyPha').hidden = toi()?.quyen !== 'admin';
+  $('#manDanhSachPha').classList.add('mo');
+};
+$('#dongDanhSachPha').onclick = () => $('#manDanhSachPha').classList.remove('mo');
+
+const apDungZoom = () => {
+  const c = $('#canvas'); if (!c) return;
+  c.style.transform = `scale(${zoom})`;
+  const frame = $('#khungCay');
+  c.style.padding = tamId ? `${frame.clientHeight / (2 * zoom)}px ${frame.clientWidth / (2 * zoom)}px` : '40px';
+};
+$('#btPhong').onclick = () => { zoom = Math.min(2, zoom + .15); apDungZoom(); };
+$('#btThu').onclick   = () => { zoom = Math.max(.3, zoom - .15); apDungZoom(); };
+$('#btVua').onclick   = () => {
+  const svg = $('#canvas svg'); if (!svg) return;
+  zoom = Math.min(1, ($('#khungCay').clientWidth - 80) / svg.width.baseVal.value); apDungZoom();
+};
+
+// Kéo để di chuyển
+(() => {
+  const k = $('#khungCay'); let keo = false, x, y, sl, st;
+  k.onmousedown = (e) => { if (e.target.closest('.nut-nguoi')) return;
+    keo = true; k.classList.add('keo'); x = e.pageX; y = e.pageY; sl = k.scrollLeft; st = k.scrollTop; };
+  addEventListener('mouseup', () => { keo = false; k.classList.remove('keo'); });
+  k.onmousemove = (e) => { if (!keo) return; k.scrollLeft = sl - (e.pageX - x); k.scrollTop = st - (e.pageY - y); };
+})();
+
+// ── Phạm vi sửa ──────────────────────────────────────────────
+const duocSua = () => !!toi()?.sua;
+const trongPhamVi = (n) => {
+  const pv = toi()?.pham_vi || {};
+  if (pv.pha && !pv.pha.includes(n.pha_id)) return false;
+  if (pv.chi != null && n.chi !== pv.chi) return false;
+  return true;
+};
+const suaDuoc = (n) => duocSua() && trongPhamVi(n);
+
+// ── Chế độ trung tâm ─────────────────────────────────────────
+function duaVaoGiua(id) {
+  const node = document.querySelector('.nut-nguoi[data-id="' + id + '"]');
+  if (!node) return;
+  const box = node.getBoundingClientRect(), frame = $('#khungCay'), r = frame.getBoundingClientRect();
+  const panel = $('#bang').classList.contains('mo') ? $('#bang').getBoundingClientRect().width : 0;
+  frame.scrollLeft += box.left + box.width / 2 - r.left - Math.max(180, r.width - panel) / 2;
+  frame.scrollTop += box.top + box.height / 2 - r.top - r.height / 2;
+}
+function datTrungTam(id) {
+  tamId = id;
+  $('#btThoatTam').style.display = id ? '' : 'none';
+  $('#chonPha').disabled = $('#cbNgoai').disabled = !!id;
+  veCay();
+  if (id) { moChiTiet(id); $('#bang').classList.remove('mo'); requestAnimationFrame(() => duaVaoGiua(id)); }
+}
+$('#btThoatTam').onclick = () => { datTrungTam(null); $('#bang').classList.remove('mo'); };
+
+// ── Chi tiết ─────────────────────────────────────────────────
+const ten = (id) => DL.nguoi.find((n) => n.id === id)?.ho_ten || '—';
+
+function moChiTiet(id) {
+  chon = id;
+  const n = DL.nguoi.find((x) => x.id === id); if (!n) return;
+  const bd = DL.hon_nhan.filter((h) => h.chong_id === id || h.vo_id === id)
+    .map((h) => ({ h, id: h.chong_id === id ? h.vo_id : h.chong_id }));
+  const con = DL.nguoi.filter((x) => x.cha_id === id || x.me_id === id);
+  const anh = DL.media.filter((m) => m.nguoi_id === id);
+  const gio = n.gio_ngay && n.gio_thang ? gioSapToi(n.gio_ngay, n.gio_thang, n.gio_nhuan) : null;
+  const co = (nhan, gt) => gt ? `<div class="dong"><span>${nhan}</span><span>${gt}</span></div>` : '';
+
+  $('#bang').innerHTML = `
+    <button onclick="this.parentNode.classList.remove('mo')" style="float:right;padding:3px 9px">✕</button>
+    <h2>${esc(n.ho_ten)}</h2>
+    <div class="phu">${esc([n.ten_khac, n.doi ? 'Đời thứ ' + n.doi : ''].filter(Boolean).join(' · ')) || '&nbsp;'}</div>
+    ${tamId && id !== tamId ? `<div style="color:var(--ngoc);font-size:13px;margin:-12px 0 16px">
+      ${nhanQuanHe(G, tamId, id) || 'không rõ quan hệ'} của ${ten(tamId)}</div>` : ''}
+    <div>
+      <span class="the">${{ nam: 'Nam', nu: 'Nữ', khac: 'Khác' }[n.gioi_tinh]}</span>
+      ${n.ngay_mat || n.gio_ngay ? '<span class="the">Đã mất</span>' : ''}
+      ${n.chi ? `<span class="the">Chi ${esc(n.chi)}</span>` : ''}
+      ${n.pha_id !== phaHT ? `<span class="the" style="color:var(--ngoc)">${
+        DL.pha.find((p) => p.id === n.pha_id)?.ten || 'phả khác'}</span>` : ''}
+    </div>
+    <div style="margin-top:16px">
+      ${co('Ngày sinh', n.ngay_sinh ? ngayVN(n.ngay_sinh) + kemAm(n.ngay_sinh) : '')}
+      ${co('Ngày mất', n.ngay_mat ? ngayVN(n.ngay_mat) + kemAm(n.ngay_mat) : '')}
+      ${co('Tuổi', nhanTuoi(n))}
+      ${co('Ngày giỗ', n.gio_ngay ? `${n.gio_ngay}/${n.gio_thang} âm${n.gio_nhuan ? ' (nhuận)' : ''}` : '')}
+      ${co('Giỗ tới', gio ? `${ngayVN(fmt(gio.ngay))} — còn ${gio.conLai} ngày` : '')}
+      ${co('Cha', n.cha_id ? esc(ten(n.cha_id)) : '')}
+      ${co('Mẹ', n.me_id ? esc(ten(n.me_id)) : '')}
+      ${co('Vợ/chồng', bd.map((b) =>
+        esc(ten(b.id)) + (b.h.trang_thai === 'ly_di' ? ' <span class="the">đã ly dị</span>' : '')).join(', '))}
+      ${co('Con', con.map((c) => esc(c.ho_ten)).join(', '))}
+      ${co('Nơi an táng', esc(n.noi_an_tang))}
+      ${co('Toạ độ mộ', n.mo_lat && n.mo_lng
+        ? `<a href="https://www.google.com/maps?q=${n.mo_lat},${n.mo_lng}" target="_blank"
+             style="color:var(--ngoc)">${n.mo_lat}, ${n.mo_lng}</a>` : '')}
+      ${co('Ghi chú', esc(n.ghi_chu))}
+      ${co('Sửa gần nhất', `${esc(n.sua_luc)}${n.sua_boi ? ' — ' + esc(n.sua_boi) : ''}`)}
+    </div>
+    ${anh.length ? `<div class="anh-luoi">${anh.map((m) => m.loai === 'tai_lieu'
+      ? `<a href="${anhURL(m.id)}" target="_blank" class="the" style="height:88px;display:flex;align-items:center;justify-content:center">${esc(m.ten_file)}</a>`
+      : `<div class="o-anh${m.dai_dien ? ' la-dai-dien' : ''}">
+          <img src="${anhURL(m.id)}" title="${esc(m.mo_ta || m.ten_file)}" onclick="window.open('${anhURL(m.id)}')">
+          ${m.dai_dien ? '<span class="dau-dd" title="Ảnh đại diện">★</span>' : ''}
+          ${suaDuoc(n) ? `<button class="nut-dd" data-dd="${m.id}" data-bat="${m.dai_dien ? 0 : 1}">${
+            m.dai_dien ? 'Bỏ đại diện' : 'Đặt đại diện'}</button>` : ''}
+        </div>`).join('')}</div>` : ''}
+    <div class="dong-nut"><button id="bTam">${id === tamId ? 'Bỏ trung tâm' : 'Đặt làm trung tâm'}</button></div>
+    ${suaDuoc(n) ? `<div class="dong-nut">
+      <button id="bSua">Sửa</button>
+      <button id="bCon">+ Con</button>
+      <button id="bChaMe">+ Cha/Mẹ</button>
+      <button id="bHN">+ Vợ/chồng</button>
+      <label class="nut" style="margin:0;text-transform:none;letter-spacing:0;padding:8px 16px;
+             border:1px solid var(--vien);color:var(--vang);cursor:pointer;display:inline-block">
+        + Ảnh/tài liệu<input type="file" id="oFile" hidden></label>
+      <button id="bCP">Chuyển phả…</button>
+      ${toi()?.quyen === 'admin' || toi()?.tao_pha ? '<button id="bMP">Mở phả riêng…</button>' : ''}
+      ${toi()?.quyen === 'admin' ? '<button class="nguy" id="bXoa">Xoá</button>' : ''}
+    </div>` : `<p style="color:var(--giay-mo);font-size:13px;margin-top:22px">${
+      !duocSua() ? 'Tài khoản của bạn chỉ được xem.'
+                 : 'Người này ngoài phạm vi bạn được giao nên chỉ xem được.'
+    }</p>`}`;
+  $('#bang').classList.add('mo');
+  // Bỏ trung tâm thì mở lại bảng để nhãn nút cập nhật theo trạng thái mới
+  $('#bTam').onclick = () => { if (id === tamId) { datTrungTam(null); moChiTiet(id); } else datTrungTam(id); };
+  $('#bang').querySelectorAll('[data-dd]').forEach((b) => b.onclick = async () => {
+    b.disabled = true;
+    try {
+      await api('/api/media/' + b.dataset.dd, { method: 'PATCH', body: { dai_dien: +b.dataset.bat } });
+      await taiCay(); moChiTiet(id);
+    } catch (e) { alert(e.message); b.disabled = false; }
+  });
+  if ($('#bMP')) $('#bMP').onclick = () => moPhaRieng(n);
+  if (suaDuoc(n)) {
+    $('#bSua').onclick = () => moForm(n);
+    $('#bCon').onclick = () => moForm(null, n);
+    $('#bChaMe').onclick = () => moChaMe(n);
+    $('#bHN').onclick = () => moHN(n);
+    $('#oFile').onchange = (e) => taiFile(e.target.files[0], id);
+    $('#bCP').onclick = () => moCP(n);
+    const bx = $('#bXoa'); if (bx) bx.onclick = () => xoa(id, n.ho_ten);
+  }
+  veCay();
+}
+
+const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+function amStr(s) {
+  const [y, m, d] = s.split('-').map(Number);
+  const a = duongSangAm(d, m, y);
+  if (!a[0]) return '';   // ngoài dải 1800–2099 của bảng âm lịch
+  return `âm ${a[0]}/${a[1]}${a[3] ? ' nhuận' : ''} ${canChiNam(a[2])}`;
+}
+const kemAm = (s) => { const t = amStr(s); return t ? ` <span style="color:var(--giay-mo)">(${t})</span>` : ''; };
+
+// ── Form người ───────────────────────────────────────────────
+const F = ['ho_ten','ten_khac','gioi_tinh','doi','pha_id','chi','cha_id','me_id','ngay_sinh','ngay_mat',
+           'gio_ngay','gio_thang','noi_an_tang','mo_lat','mo_lng','ghi_chu'];
+// Chỉ hiện khi tích "Đã mất" — người còn sống không phải nhìn ô ngày mất, mộ phần
+const F_MAT = ['ngay_mat','gio_ngay','gio_thang','noi_an_tang','mo_lat','mo_lng'];
+function hienKhoiMat(bat) {
+  $('#khoiMat').style.display = bat ? '' : 'none';
+  if (!bat) {
+    for (const f of F_MAT) $('#f_' + f).value = '';
+    gioNhuan = 0;
+    $('#f_gio_ngay').disabled = $('#f_gio_thang').disabled = false;
+    $('#goiYGio').textContent = '';
+  } else dongBoGio();
+}
+$('#f_da_mat').onchange = () => hienKhoiMat($('#f_da_mat').checked);
+
+function napChon(sel, gioi, chonId) {
+  // luôn giữ người đang được chọn trong danh sách, kể cả khi giới tính không khớp bộ lọc
+  const cam = suaId ? new Set([suaId, ...conChau(G, suaId)]) : new Set();
+  const ds = DL.nguoi.filter((n) => !cam.has(n.id) && (!gioi || n.gioi_tinh === gioi || n.id === chonId));
+  sel.innerHTML = '<option value="">— không rõ —</option>' +
+    ds.map((n) => `<option value="${n.id}" ${n.id === chonId ? 'selected' : ''}>${esc(n.ho_ten)}</option>`).join('');
+}
+
+// Bạn đời đã khai, xếp theo thứ tự (chính thất trước)
+const banDoiCua = (id) => G.banDoiCua(id).map((n) => n.id);
+
+// Chọn cha/mẹ ở một bên thì điền nốt bên kia nếu người đó chỉ có một bạn đời
+function suyBanDoi(oNguon, oDich) {
+  const id = parseInt(oNguon.value);
+  if (!id || oDich.value) return;
+  const bd = banDoiCua(id);
+  if (bd.length === 1) oDich.value = String(bd[0]);
+}
+
+function moForm(n, chaMe) {
+  suaId = n?.id || null;
+  $('#tieuDeNguoi').textContent = n ? 'Sửa: ' + n.ho_ten : (chaMe ? 'Thêm con của ' + chaMe.ho_ten : 'Thêm người');
+  // Thêm con: gán luôn người đang mở làm cha/mẹ, và suy nốt vế còn lại từ hôn nhân đã khai
+  let chaId = n?.cha_id ?? null, meId = n?.me_id ?? null;
+  if (!n && chaMe) {
+    const bd = banDoiCua(chaMe.id);
+    if (chaMe.gioi_tinh === 'nu') {
+      meId = chaMe.id;
+      if (bd.length === 1) chaId = bd[0];
+    } else {
+      chaId = chaMe.id;
+      if (bd.length === 1) meId = bd[0];
+    }
+  }
+  napChon($('#f_cha_id'), 'nam', chaId);
+  napChon($('#f_me_id'), 'nu', meId);
+  for (const f of F) { const el = $('#f_' + f); if (el && !['cha_id','me_id'].includes(f)) el.value = n?.[f] ?? ''; }
+  if (!n) $('#f_gioi_tinh').value = 'nam';
+  if (!n && chaMe?.doi) $('#f_doi').value = chaMe.doi + 1;   // hiển thị tạm, máy chủ sẽ tính lại
+  // đời do hệ thống tính, chỉ nhập tay ở người gốc (không có cha lẫn mẹ)
+  const coChaMe = () => !!($('#f_cha_id').value || $('#f_me_id').value);
+  const khoaDoi = () => { $('#f_doi').disabled = coChaMe(); };
+  $('#f_cha_id').onchange = () => { suyBanDoi($('#f_cha_id'), $('#f_me_id')); khoaDoi(); };
+  $('#f_me_id').onchange = () => { suyBanDoi($('#f_me_id'), $('#f_cha_id')); khoaDoi(); };
+  khoaDoi();
+  const daMat = !!n && F_MAT.some((f) => n[f] != null && n[f] !== '');
+  $('#f_da_mat').checked = daMat;
+  $('#khoiMat').style.display = daMat ? '' : 'none';
+  const pv = toi()?.pham_vi || {};
+  $('#f_pha_id').innerHTML = (DL.pha || []).map((p) =>
+    `<option value="${p.id}">${esc(p.ten)}</option>`).join('');
+  $('#f_pha_id').value = String(n?.pha_id ?? chaMe?.pha_id ?? phaHT ?? pv.pha?.[0] ?? 1);
+  $('#f_pha_id').disabled = !!(pv.pha && pv.pha.length === 1);
+  $('#dsChi').innerHTML = [...new Set(DL.nguoi.map((x) => x.chi).filter(Boolean))]
+    .filter(Boolean).map((c) => `<option value="${c}">`).join('');
+  $('#f_chi').value = n?.chi ?? (chaMe?.chi ?? pv.chi ?? '');
+  $('#f_chi').disabled = pv.chi != null;
+  gioNhuan = n?.gio_nhuan || 0;
+  $('#loiNguoi').textContent = '';
+  if (daMat) dongBoGio(); else $('#goiYGio').textContent = '';
+  $('#manNguoi').classList.add('mo');
+  $('#f_ho_ten').focus();
+}
+
+$('#f_cha_id').onchange = () => suyBanDoi($('#f_cha_id'), $('#f_me_id'));
+$('#f_me_id').onchange  = () => suyBanDoi($('#f_me_id'), $('#f_cha_id'));
+
+// Ngày giỗ âm luôn suy từ ngày mất dương; chỉ nhập tay khi không rõ ngày mất
+let gioNhuan = 0;
+function dongBoGio() {
+  const o1 = $('#f_gio_ngay'), o2 = $('#f_gio_thang'), v = $('#f_ngay_mat').value;
+  if (v) {
+    const [y, m, d] = v.split('-').map(Number);
+    const a = duongSangAm(d, m, y);
+    if (a[0]) {
+      o1.value = a[0]; o2.value = a[1]; gioNhuan = a[3];
+      o1.disabled = o2.disabled = true;
+      $('#goiYGio').textContent =
+        `Giỗ ${a[0]}/${a[1]}${a[3] ? ' nhuận' : ''} âm — tự tính từ ngày mất (năm ${canChiNam(a[2])}).`;
+      return;
+    }
+    $('#goiYGio').textContent = 'Ngày mất ngoài dải 1800–2099 — nhập ngày giỗ âm theo gia phả.';
+  } else {
+    $('#goiYGio').textContent = 'Chưa rõ ngày mất — nhập ngày giỗ âm theo gia phả.';
+  }
+  o1.disabled = o2.disabled = false;
+}
+$('#f_ngay_mat').onchange = dongBoGio;
+$('#f_ngay_mat').oninput = dongBoGio;
+
+$('#btHuy').onclick = () => $('#manNguoi').classList.remove('mo');
+$('#btThem').onclick = () => moForm(null);
+if (!duocSua()) $('#btThem').style.display = 'none';
+
+$('#btLuu').onclick = async () => {
+  const b = {};
+  for (const f of F) {
+    let v = $('#f_' + f).value;
+    b[f] = v === '' ? null : (['doi','pha_id','cha_id','me_id','gio_ngay','gio_thang'].includes(f) ? parseInt(v)
+          : ['mo_lat','mo_lng'].includes(f) ? parseFloat(v) : v);
+  }
+  if (!b.ho_ten) { $('#loiNguoi').textContent = 'Thiếu họ tên'; return; }
+  if ($('#f_doi').disabled) delete b.doi;      // đời sẽ do máy chủ tính lại
+  b.gio_nhuan = $('#f_da_mat').checked ? gioNhuan : 0;
+  if (!$('#f_da_mat').checked) for (const f of F_MAT) b[f] = null;
+  try {
+    if (suaId) {
+      b.sua_luc = DL.nguoi.find((n) => n.id === suaId)?.sua_luc;
+      await api('/api/nguoi/' + suaId, { method: 'PATCH', body: b });
+    } else await api('/api/nguoi', { method: 'POST', body: b });
+    $('#manNguoi').classList.remove('mo');
+    await taiCay();
+    if (suaId) moChiTiet(suaId);
+  } catch (e) { $('#loiNguoi').textContent = e.message; }
+};
+
+// ── Thêm đời trên (cha/mẹ) ───────────────────────────────────
+let cmCua = null;
+function moChaMe(n) {
+  cmCua = n;
+  $('#cm_vai').value = n.cha_id && !n.me_id ? 'me_id' : 'cha_id';
+  $('#tdChaMe').textContent = 'Thêm cha/mẹ của ' + n.ho_ten;
+  const doiMoi = Math.max(1, (n.doi ?? 1) - 1);
+  $('#ghiChaMe').textContent = (n.doi ?? 1) - 1 >= 1
+    ? `Người mới sẽ là đời ${doiMoi}.`
+    : `${n.ho_ten} đang là đời ${n.doi ?? 1}, nên người mới thành đời 1 và nhánh con cháu tự dịch xuống một bậc.`;
+  capNhatChonCM();
+  $('#cm_ten').value = ''; $('#cm_ten_khac').value = '';
+  $('#loiCM').textContent = '';
+  $('#manChaMe').classList.add('mo');
+}
+function capNhatChonCM() {
+  const gioi = $('#cm_vai').value === 'cha_id' ? 'nam' : 'nu';
+  // cha/mẹ không thể là con cháu, anh chị em hay bạn đời của chính người này
+  const n0 = DL.nguoi.find((x) => x.id === cmCua.id) || cmCua;
+  const anhEm = anhChiEm(G, n0.id).map((x) => x.id);
+  const cam = new Set([cmCua.id, ...conChau(G, cmCua.id), ...anhEm, ...banDoiCua(cmCua.id)]);
+  for (const c of [...conChau(G, cmCua.id), ...anhEm]) for (const bd of banDoiCua(c)) cam.add(bd);
+  cam.delete(n0.cha_id); cam.delete(n0.me_id);   // cha/mẹ hiện tại vẫn phải chọn lại được
+  const ds = DL.nguoi.filter((n) => n.gioi_tinh === gioi && !cam.has(n.id));
+  $('#cm_ai').innerHTML = '<option value="">— tạo người mới —</option>' +
+    ds.map((n) => `<option value="${n.id}">${esc(n.ho_ten)}${n.doi ? ' (đời ' + n.doi + ')' : ''}</option>`).join('');
+  doiHienMoi();
+}
+const doiHienMoi = () => { $('#cm_moi').style.display = $('#cm_ai').value ? 'none' : ''; };
+$('#cm_vai').onchange = capNhatChonCM;
+$('#cm_ai').onchange = doiHienMoi;
+$('#btHuyCM').onclick = () => $('#manChaMe').classList.remove('mo');
+
+$('#btLuuCM').onclick = async () => {
+  const vai = $('#cm_vai').value;
+  let id = parseInt($('#cm_ai').value) || null;
+  let n = cmCua;
+  $('#loiCM').textContent = '';
+  try {
+    if (!id) {
+      const ten = $('#cm_ten').value.trim();
+      if (!ten) { $('#loiCM').textContent = 'Nhập họ tên người mới'; return; }
+      // đời của cả cây do máy chủ tính lại sau khi nối cha/mẹ
+      const doiMoi = Math.max(1, (n.doi ?? 1) - 1);
+      const r = await api('/api/nguoi', { method: 'POST', body: {
+        ho_ten: ten, ten_khac: $('#cm_ten_khac').value.trim() || null,
+        gioi_tinh: vai === 'cha_id' ? 'nam' : 'nu', doi: doiMoi, pha_id: n.pha_id, chi: n.chi } });
+      id = r.nguoi.id;
+    }
+    await api('/api/nguoi/' + n.id, { method: 'PATCH', body: { [vai]: id, sua_luc: n.sua_luc } });
+    $('#manChaMe').classList.remove('mo');
+    await taiCay(); moChiTiet(n.id);
+  } catch (e) { $('#loiCM').textContent = e.message; }
+};
+
+// ── Mở phả riêng cho một người ───────────────────────────────
+let mpCua = null;
+function moPhaRieng(n) {
+  mpCua = n;
+  $('#tdMP').textContent = 'Mở phả riêng từ ' + n.ho_ten;
+  $('#mp_ten').value = 'Gia phả họ ' + (n.ho_ten.trim().split(/\s+/)[0] || '');
+  $('#mp_phu_de').value = '';
+  $('#loiMP').textContent = '';
+  xemTruocMP();
+  $('#manMP').classList.add('mo');
+}
+$('#btHuyMP').onclick = () => $('#manMP').classList.remove('mo');
+$('#mp_dau').onchange = xemTruocMP;
+
+function xemTruocMP() {
+  const tap = new Set([mpCua.id]);
+  for (let v = 0; v < 40; v++) {          // con cháu theo dòng cha
+    let them = false;
+    for (const c of DL.nguoi)
+      if (!tap.has(c.id) && c.cha_id != null && tap.has(c.cha_id)) { tap.add(c.id); them = true; }
+    if (!them) break;
+  }
+  if ($('#mp_dau').checked)
+    for (const h of DL.hon_nhan) {
+      if (tap.has(h.chong_id) && G.lay(h.chong_id)?.gioi_tinh === 'nam') tap.add(h.vo_id);
+      if (tap.has(h.vo_id) && G.lay(h.vo_id)?.gioi_tinh === 'nam') tap.add(h.chong_id);
+    }
+  const ds = [...tap].map((i) => G.lay(i)).filter(Boolean);
+  const ngoai = ds.filter((n) => !suaDuoc(n));
+  $('#mp_xem').innerHTML =
+    `<div style="color:var(--vang);margin-bottom:6px">${ds.length} người sẽ sang phả mới</div>` +
+    ds.map((n) => `<div style="padding:3px 0">${esc(n.ho_ten)}${
+      n.doi ? ` <span style="color:var(--giay-mo)">đời ${n.doi}</span>` : ''}</div>`).join('') +
+    (ngoai.length ? `<div style="color:#d98b7f;margin-top:6px">
+      ${ngoai.length} người ngoài phạm vi sửa của bạn — sẽ bị máy chủ từ chối.</div>` : '');
+}
+
+$('#btLuuMP').onclick = async () => {
+  const ten = $('#mp_ten').value.trim();
+  if (!ten) { $('#loiMP').textContent = 'Nhập tên phả'; return; }
+  try {
+    const r = await api('/api/pha', { method: 'POST', body: {
+      ten, phu_de: $('#mp_phu_de').value.trim() || null } });
+    await api('/api/chuyen-pha', { method: 'POST', body: {
+      goc_id: mpCua.id, pha_id: r.id, pham_vi: 'nhanh', gom_dau: $('#mp_dau').checked } });
+    $('#manMP').classList.remove('mo');
+    $('#bang').classList.remove('mo'); chon = null;
+    phaHT = r.id; luuPha();
+    sessionStorage.setItem('gp_toi', JSON.stringify(await api('/api/toi')));
+    await taiCay();
+  } catch (e) { $('#loiMP').textContent = e.message; }
+};
+
+// ── Chuyển phả ───────────────────────────────────────────────
+let cpCua = null;
+function moCP(n) {
+  cpCua = n;
+  $('#tdCP').textContent = 'Chuyển nhánh của ' + n.ho_ten;
+  $('#cp_pha').innerHTML = (DL.pha || []).filter((p) => p.id !== n.pha_id)
+    .map((p) => `<option value="${p.id}">${esc(p.ten)}</option>`).join('');
+  $('#loiCP').textContent = '';
+  $('#manCP').classList.add('mo');
+  xemTruocCP();
+}
+$('#btHuyCP').onclick = () => $('#manCP').classList.remove('mo');
+$('#cp_pv').onchange = xemTruocCP;
+$('#cp_dau').onchange = xemTruocCP;
+$('#cp_pha').onchange = xemTruocCP;
+
+async function xemTruocCP() {
+  if (!cpCua) return;
+  const pha = parseInt($('#cp_pha').value);
+  if (!pha) { $('#cp_xem').innerHTML = '<em style="color:var(--giay-mo)">Chưa có phả nào khác — tạo trong trang Quản trị.</em>';
+              $('#btLuuCP').disabled = true; return; }
+  try {
+    const r = await api('/api/chuyen-pha', { method: 'POST', body: {
+      goc_id: cpCua.id, pha_id: pha, pham_vi: $('#cp_pv').value,
+      gom_dau: $('#cp_dau').checked, xem_truoc: true } });
+    const tenPha = (id) => DL.pha.find((p) => p.id === id)?.ten || '—';
+    $('#cp_xem').innerHTML = `<div style="color:var(--vang);margin-bottom:6px">
+        ${r.so_nguoi} người sẽ chuyển (trong ${r.danh_sach.length} người của nhánh)</div>` +
+      r.danh_sach.map((x) => `<div class="dong" style="padding:5px 0">
+        <span style="min-width:150px">${esc(x.ho_ten)}</span>
+        <span style="color:var(--giay-mo)">${x.doi ? 'đời ' + x.doi + ' · ' : ''}${
+          x.pha_id === pha ? 'đã ở phả này' : tenPha(x.pha_id) + ' →'}</span></div>`).join('');
+    $('#btLuuCP').disabled = r.so_nguoi === 0;
+  } catch (e) { $('#loiCP').textContent = e.message; $('#btLuuCP').disabled = true; }
+}
+
+$('#btLuuCP').onclick = async () => {
+  const pha = parseInt($('#cp_pha').value);
+  const ten = DL.pha.find((p) => p.id === pha)?.ten;
+  if (!confirm(`Chuyển nhánh này sang “${ten}”?`)) return;
+  try {
+    await api('/api/chuyen-pha', { method: 'POST', body: {
+      goc_id: cpCua.id, pha_id: pha, pham_vi: $('#cp_pv').value, gom_dau: $('#cp_dau').checked } });
+    $('#manCP').classList.remove('mo');
+    $('#bang').classList.remove('mo'); chon = null;
+    await taiCay();
+  } catch (e) { $('#loiCP').textContent = e.message; }
+};
+
+// ── Hôn nhân ─────────────────────────────────────────────────
+let hnCua = null;
+// Hôn nhân đang hiệu lực = chưa ly dị và bạn đời còn sống
+const dangHieuLuc = (h) => {
+  if (h.trang_thai === 'ly_di') return false;
+  const bd = DL.nguoi.find((x) => x.id === (h.chong_id === hnCua?.id ? h.vo_id : h.chong_id));
+  return !(bd && (bd.ngay_mat || bd.gio_ngay != null));
+};
+
+function moHN(n) {
+  hnCua = n;
+  $('#hn_tatca').checked = false;
+  $('#loiHN').textContent = '';
+  const hnCu = DL.hon_nhan.filter((h) => h.chong_id === n.id || h.vo_id === n.id);
+  const dang = hnCu.filter(dangHieuLuc);
+  if (dang.length) {
+    const t = (h) => ten(h.chong_id === n.id ? h.vo_id : h.chong_id);
+    $('#hn_canh_txt').textContent =
+      `${n.ho_ten} đang có ${dang.map(t).join(', ')}. Chỉ khai thêm khi ly dị hoặc kết hôn lần nữa.`;
+    $('#hn_lydo').innerHTML = '<option value="">— chọn lý do —</option>' +
+      dang.map((h) => `<option value="ld:${h.id}">Đã ly dị ${t(h)}</option>`).join('') +
+      '<option value="them">Kết hôn thêm (kế thất / đa thê)</option>';
+    $('#hn_canh').style.display = '';
+    $('#hn_than').style.display = 'none';
+  } else {
+    $('#hn_canh').style.display = 'none';
+    $('#hn_than').style.display = '';
+    napChonHN();
+  }
+  $('#manHN').classList.add('mo');
+}
+$('#hn_lydo').onchange = () => {
+  const v = $('#hn_lydo').value;
+  $('#hn_than').style.display = v ? '' : 'none';
+  if (v) { $('#hn_thu_tu').value = v === 'them' ? (banDoiCua(hnCua.id).length + 1) : 1; napChonHN(); }
+};
+function napChonHN() {
+  const n = hnCua;
+  const gioi = n.gioi_tinh === 'nam' ? 'nu' : n.gioi_tinh === 'nu' ? 'nam' : null;
+  const cam = $('#hn_tatca').checked
+    ? new Set([n.id, ...banDoiCua(n.id)])
+    : noiToc(G, n.id);
+  const ds = DL.nguoi
+    .filter((x) => !cam.has(x.id) && (!gioi || x.gioi_tinh === gioi))
+    .sort((a, b) => Math.abs((a.doi ?? 99) - (n.doi ?? 99)) - Math.abs((b.doi ?? 99) - (n.doi ?? 99))
+                 || a.ho_ten.localeCompare(b.ho_ten, 'vi'));
+  $('#hn_ai').innerHTML = ds.length
+    ? '<option value="">— chọn người —</option>' + ds.map((x) =>
+        `<option value="${x.id}">${esc(x.ho_ten)}${x.doi ? ' (đời ' + x.doi + ')' : ''}</option>`).join('')
+    : '<option value="">— không có ai phù hợp, dùng “+ Thêm người” trước —</option>';
+}
+$('#hn_tatca').onchange = napChonHN;
+$('#btHuyHN').onclick = () => $('#manHN').classList.remove('mo');
+$('#btLuuHN').onclick = async () => {
+  const ai = parseInt($('#hn_ai').value);
+  if (!ai) { $('#loiHN').textContent = 'Chọn người bạn đời'; return; }
+  const chong = hnCua.gioi_tinh === 'nu' ? ai : hnCua.id;
+  const vo = hnCua.gioi_tinh === 'nu' ? hnCua.id : ai;
+  const lydo = $('#hn_canh').style.display === 'none' ? '' : $('#hn_lydo').value;
+  if ($('#hn_canh').style.display !== 'none' && !lydo) {
+    $('#loiHN').textContent = 'Chọn lý do khai thêm'; return;
+  }
+  try {
+    if (lydo.startsWith('ld:'))
+      await api('/api/hon-nhan/' + lydo.slice(3), { method: 'PATCH', body: { trang_thai: 'ly_di' } });
+    await api('/api/hon-nhan', { method: 'POST', body: { chong_id: chong, vo_id: vo, thu_tu: parseInt($('#hn_thu_tu').value) || 1 } });
+    $('#manHN').classList.remove('mo');
+    await taiCay(); moChiTiet(hnCua.id);
+  } catch (e) { $('#loiHN').textContent = e.message; }
+};
+
+// ── File & xoá ───────────────────────────────────────────────
+async function taiFile(f, nguoiId) {
+  if (!f) return;
+  const loai = f.type.startsWith('image/') ? 'anh' : 'tai_lieu';
+  try {
+    await api(`/api/media?nguoi_id=${nguoiId}&loai=${loai}`, {
+      method: 'POST', raw: true, body: f,
+      headers: { 'Content-Type': f.type || 'application/octet-stream', 'X-Ten-File': encodeURIComponent(f.name) },
+    });
+    await taiCay(); moChiTiet(nguoiId);
+  } catch (e) { alert(e.message); }
+}
+
+async function xoa(id, ten) {
+  if (!confirm(`Xoá ${ten} khỏi gia phả?`)) return;
+  try { await api('/api/nguoi/' + id, { method: 'DELETE' });
+    $('#bang').classList.remove('mo'); chon = null; await taiCay(); }
+  catch (e) { alert(e.message); }
+}
+
+// Chặn nhấp Lưu lặp khi máy chủ đang xử lý.
+for (const id of ['btLuu','btLuuCM','btLuuHN','btLuuMP','btLuuCP']) {
+  const button = document.getElementById(id), action = button.onclick;
+  button.onclick = async (e) => {
+    if (button.disabled) return;
+    button.disabled = true;
+    try { await action(e); } finally { button.disabled = false; }
+  };
+}
+new ResizeObserver(() => {
+  document.documentElement.style.setProperty('--header-height', document.querySelector('header').offsetHeight + 'px');
+}).observe(document.querySelector('header'));
+khoiDong().catch(hienLoiKetNoi);
+
+for (const label of document.querySelectorAll('label:not([for])')) {
+  const control = label.nextElementSibling;
+  if (control?.matches('input[id], select[id], textarea[id]')) label.htmlFor = control.id;
+}
+</script>
+</body>
+</html>

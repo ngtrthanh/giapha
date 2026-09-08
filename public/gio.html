@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ngày giỗ — Gia Phả</title>
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<header>
+  <h1>NGÀY GIỖ<small id="phuDe">Lịch âm dòng họ</small></h1>
+  <nav>
+    <a href="/">Cây phả hệ</a>
+    <a href="/gio.html" class="active">Ngày giỗ</a>
+    <a href="/lich.html">Lịch vạn niên</a>
+    <a href="/admin.html">Quản trị</a>
+  </nav>
+</header>
+
+<div class="trang">
+  <div style="display:flex;gap:14px;align-items:center;margin-bottom:22px;flex-wrap:wrap">
+    <div style="flex:1;min-width:200px">
+      <div id="homNay" style="font-family:var(--serif);color:var(--vang);font-size:19px"></div>
+      <div id="homNayAm" style="color:var(--giay-mo);font-size:13px"></div>
+    </div>
+    <div><label style="margin:0">Trong vòng</label>
+      <select id="loc" style="width:auto">
+        <option value="90">90 ngày</option>
+        <option value="180">180 ngày</option>
+        <option value="365" selected>1 năm</option>
+        <option value="9999">Tất cả</option>
+      </select></div>
+    <button id="btICS">Tải lịch .ics</button>
+  </div>
+
+  <table>
+    <thead><tr><th>Người</th><th>Ngày giỗ âm</th><th>Dương lịch</th><th>Còn</th><th>Nơi an táng</th></tr></thead>
+    <tbody id="tb"><tr><td colspan="5" class="trong">Đang tải…</td></tr></tbody>
+  </table>
+</div>
+
+<script type="module">
+import { api, toi, ngayVN, esc } from '/assets/api.js';
+import { duongSangAm, canChiNam, gioSapToi } from '/assets/amlich.js';
+
+const $ = (s) => document.querySelector(s);
+let ds = [];
+
+const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
+function hienHomNay() {
+  const n = new Date();
+  const a = duongSangAm(n.getDate(), n.getMonth()+1, n.getFullYear());
+  $('#homNay').textContent = `Hôm nay ${n.getDate()}/${n.getMonth()+1}/${n.getFullYear()}`;
+  $('#homNayAm').textContent = a[0]
+    ? `Âm lịch ${a[0]}/${a[1]}${a[3]?' nhuận':''} năm ${canChiNam(a[2])}`
+    : '';
+}
+
+async function tai() {
+  if (!toi()) { location.href = '/'; return; }
+  const d = await api('/api/cay');
+  if (d.cau_hinh?.tieu_de) { $('#phuDe').textContent = d.cau_hinh.tieu_de; document.title = 'Ngày giỗ — ' + d.cau_hinh.tieu_de; }
+  ds = d.nguoi.filter(n => n.gio_ngay && n.gio_thang)
+    .map(n => ({ n, g: gioSapToi(n.gio_ngay, n.gio_thang, n.gio_nhuan) }))
+    .filter(x => x.g)
+    .sort((a,b) => a.g.conLai - b.g.conLai);
+  ve();
+}
+
+function ve() {
+  const gh = parseInt($('#loc').value);
+  const r = ds.filter(x => x.g.conLai <= gh);
+  $('#tb').innerHTML = r.length ? r.map(({n,g}) => `
+    <tr>
+      <td><a href="/#${n.id}" style="color:var(--giay);text-decoration:none">${esc(n.ho_ten)}</a>
+          ${n.doi ? `<span style="color:var(--giay-mo);font-size:12px"> · đời ${n.doi}</span>` : ''}</td>
+      <td>${n.gio_ngay}/${n.gio_thang}${n.gio_nhuan ? ' nhuận' : ''}</td>
+      <td>${ngayVN(fmt(g.ngay))}</td>
+      <td class="${g.conLai === 0 ? 'hom-nay' : g.conLai <= 30 ? 'sap' : ''}">
+          ${g.conLai === 0 ? 'HÔM NAY' : g.conLai + ' ngày'}</td>
+      <td style="color:var(--giay-mo)">${esc(n.noi_an_tang || '—')}</td>
+    </tr>`).join('')
+    : '<tr><td colspan="5" class="trong">Chưa có ngày giỗ nào được ghi.</td></tr>';
+}
+$('#loc').onchange = ve;
+
+// Xuất lịch .ics — sự kiện cả ngày, nhắc trước 3 ngày
+$('#btICS').onclick = () => {
+  const L = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//GiaPha//VN','CALSCALE:GREGORIAN'];
+  for (const { n, g } of ds) {
+    const d = fmt(g.ngay).replace(/-/g,'');
+    const het = fmt(new Date(g.ngay.getTime()+86400000)).replace(/-/g,'');
+    L.push('BEGIN:VEVENT', `UID:gio-${n.id}-${d}@giapha`,
+      `DTSTART;VALUE=DATE:${d}`, `DTEND;VALUE=DATE:${het}`,
+      `SUMMARY:Giỗ ${n.ho_ten} (${n.gio_ngay}/${n.gio_thang} âm)`,
+      `DESCRIPTION:${n.noi_an_tang || ''}`,
+      'BEGIN:VALARM','TRIGGER:-P3D','ACTION:DISPLAY','DESCRIPTION:Sắp đến ngày giỗ','END:VALARM',
+      'END:VEVENT');
+  }
+  L.push('END:VCALENDAR');
+  const b = new Blob([L.join('\r\n')], { type: 'text/calendar' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(b); a.download = 'ngay-gio.ics'; a.click();
+};
+
+hienHomNay(); tai();
+
+for (const label of document.querySelectorAll('label:not([for])')) {
+  const control = label.nextElementSibling;
+  if (control?.matches('input[id], select[id], textarea[id]')) label.htmlFor = control.id;
+}
+</script>
+</body>
+</html>

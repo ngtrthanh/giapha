@@ -1,0 +1,13 @@
+{
+  "name": "giapha",
+  "private": true,
+  "scripts": {
+    "db": "wrangler d1 execute giapha-db --file=schema.sql --local --config wrangler.local.toml",
+    "dev": "wrangler dev --config wrangler.local.toml --port 8788",
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "playwright": "^1.63.0",
+    "wrangler": "^4.0.0"
+  }
+}

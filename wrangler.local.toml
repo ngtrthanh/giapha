@@ -1,0 +1,18 @@
+# Cấu hình chạy CỤC BỘ (không đụng tới Cloudflare)
+# Dùng: npx wrangler dev --config wrangler.local.toml
+name = "giapha-local"
+main = "workers/api/index.js"
+compatibility_date = "2025-01-01"
+
+# Phục vụ luôn giao diện tĩnh — cùng cổng với API, không lo CORS
+[assets]
+directory = "./public"
+
+[[d1_databases]]
+binding       = "DB"
+database_name = "giapha-db"
+database_id   = "local"
+
+[[r2_buckets]]
+binding     = "MEDIA"
+bucket_name = "giapha-media"

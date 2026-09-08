@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lịch vạn niên — Gia Phả</title>
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<header>
+  <h1>LỊCH VẠN NIÊN<small id="phuDe">Âm dương · ngày giỗ dòng họ</small></h1>
+  <nav>
+    <a href="/">Cây phả hệ</a>
+    <a href="/gio.html">Ngày giỗ</a>
+    <a href="/lich.html" class="active">Lịch vạn niên</a>
+    <a href="/admin.html">Quản trị</a>
+  </nav>
+</header>
+
+<div class="trang">
+
+  <div class="lich-ngay">
+    <button class="lich-mui-ten" id="btTruoc" aria-label="Ngày trước">‹</button>
+    <div class="lich-ben">
+      <div class="lich-nhan">Dương lịch</div>
+      <div class="lich-so" id="dSo">–</div>
+      <div class="lich-phu" id="dPhu">&nbsp;</div>
+    </div>
+    <div class="lich-ben">
+      <div class="lich-nhan">Âm lịch</div>
+      <div class="lich-so" id="aSo">–</div>
+      <div class="lich-phu" id="aPhu">&nbsp;</div>
+    </div>
+    <button class="lich-mui-ten" id="btSau" aria-label="Ngày sau">›</button>
+  </div>
+
+  <div class="lich-chi-tiet" id="chiTiet"></div>
+
+  <div class="lich-thanh">
+    <div class="lich-tieu-de" id="tdThang">—</div>
+    <button id="btThangTruoc" aria-label="Tháng trước">‹</button>
+    <button id="btThangSau" aria-label="Tháng sau">›</button>
+    <select id="chonThang" aria-label="Chọn tháng"></select>
+    <select id="chonNam" aria-label="Chọn năm"></select>
+    <button id="btHomNay">Hôm nay</button>
+    <button id="btMoChon">Đổi ngày âm/dương…</button>
+  </div>
+
+  <div class="lich-luoi" id="luoi"></div>
+
+  <div class="lich-chu-thich">
+    <span><span class="cham hd"></span> Ngày hoàng đạo</span>
+    <span><span class="cham hac"></span> Ngày hắc đạo</span>
+    <span class="lich-le">Ngày lễ</span>
+    <span class="lich-gio">Giỗ trong họ</span>
+  </div>
+</div>
+
+<!-- Đổi ngày âm ↔ dương rồi nhảy tới ngày đó -->
+<div class="man" id="manChon">
+  <div class="hop" style="width:460px">
+    <h3>Đổi ngày âm ↔ dương</h3>
+    <p style="color:var(--giay-mo);font-size:13px;margin:0">
+      Sửa bên nào thì bên kia đổi theo. Bấm “Xem ngày này” để nhảy tới.</p>
+
+    <label>Dương lịch</label>
+    <div style="display:flex;gap:8px">
+      <select id="sd" aria-label="Ngày dương"></select>
+      <select id="sm" aria-label="Tháng dương"></select>
+      <select id="sy" aria-label="Năm dương"></select>
+    </div>
+
+    <label>Âm lịch</label>
+    <div style="display:flex;gap:8px">
+      <select id="ld" aria-label="Ngày âm"></select>
+      <select id="lm" aria-label="Tháng âm"></select>
+      <select id="ly" aria-label="Năm âm"></select>
+    </div>
+
+    <div class="mini-luoi" id="miniLuoi"></div>
+
+    <div class="loi" id="loiChon"></div>
+    <div class="dong-nut">
+      <button class="chinh" id="btXemNgay">Xem ngày này</button>
+      <button id="btDongChon">Đóng</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { api, toi, esc } from '/assets/api.js';
+import { amLich, amSangDuong, thongTinNam, canChiNgay, canChiNam, canChiThang,
+         menhNgay, laHoangDao, gioHoangDao, tuoiXung, tietKhi, ngayLe,
+         NAM_MIN, NAM_MAX } from '/assets/amlich.js';
+
+const $ = (s) => document.querySelector(s);
+const THU = ['Thứ hai','Thứ ba','Thứ tư','Thứ năm','Thứ sáu','Thứ bảy','Chủ nhật'];
+const THU_NGAN = ['T2','T3','T4','T5','T6','T7','CN'];
+
+const homNay = new Date();
+const chiNgay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+let chon = chiNgay(homNay);
+let xemThang = chon.getMonth() + 1, xemNam = chon.getFullYear();
+
+// Giỗ trong họ, gộp mọi phả: "ngày-tháng-nhuận" -> [tên người]
+let gioTheoNgay = new Map();
+const khoaGio = (ngay, thang, nhuan) => `${ngay}-${thang}-${nhuan ? 1 : 0}`;
+
+const opt = (v, nhan, chonNo) => `<option value="${v}"${chonNo ? ' selected' : ''}>${nhan}</option>`;
+
+// ── Ô ngày đang chọn + hộp chi tiết ──────────────────────────
+function veNgay() {
+  const d = chon.getDate(), m = chon.getMonth() + 1, y = chon.getFullYear();
+  const a = amLich(d, m, y);
+  const thu = THU[(chon.getDay() + 6) % 7];
+
+  $('#dSo').textContent = d;
+  $('#dPhu').innerHTML = `${thu}, tháng ${String(m).padStart(2,'0')} năm ${y}`;
+
+  if (!a.ngay) {                       // ngoài dải 1800–2099 của bảng tra
+    $('#aSo').textContent = '–';
+    $('#aPhu').innerHTML = 'Ngoài dải âm lịch tra được';
+    $('#chiTiet').innerHTML = `<span style="color:var(--giay-mo)">Chỉ tra được âm lịch từ năm ${NAM_MIN} đến ${NAM_MAX}.</span>`;
+    return;
+  }
+
+  $('#aSo').textContent = a.ngay;
+  $('#aPhu').innerHTML = `Tháng ${a.thang}${a.nhuan ? ' nhuận' : ''} năm ${canChiNam(a.nam)}<br>
+    <span class="cc">Ngày ${canChiNgay(d, m, y)} · tháng ${canChiThang(a.thang, a.nam, a.nhuan)}</span>`;
+
+  const hd = laHoangDao(a.jd, a.thang);
+  const le = ngayLe(d, m, a.ngay, a.thang, a.nhuan);
+  const gio = gioTheoNgay.get(khoaGio(a.ngay, a.thang, a.nhuan)) || [];
+
+  $('#chiTiet').innerHTML = [
+    le ? `<b>Ngày lễ:</b> <span class="lich-le">${esc(le)}</span>` : '',
+    gio.length ? `<b>Giỗ trong họ:</b> <span class="lich-gio">${gio.map(esc).join(', ')}</span>` : '',
+    `<b>Mệnh ngày:</b> ${menhNgay(a.jd)} — ngày ${hd ? 'hoàng đạo' : 'hắc đạo'}`,
+    `<b>Tiết khí:</b> ${tietKhi(a.jd)}`,
+    `<b>Giờ hoàng đạo:</b> ${gioHoangDao(a.jd).join(', ')}`,
+    `<b>Tuổi xung:</b> ${tuoiXung(a.jd)}`,
+  ].filter(Boolean).join('<br>');
+}
+
+// ── Lưới tháng ───────────────────────────────────────────────
+function veLuoi() {
+  $('#tdThang').textContent = `Tháng ${String(xemThang).padStart(2,'0')} năm ${xemNam}`;
+  $('#chonThang').value = xemThang;
+  $('#chonNam').value = xemNam;
+
+  const dau = new Date(xemNam, xemThang - 1, 1);
+  const lech = (dau.getDay() + 6) % 7;                 // thứ hai = 0
+  const batDau = new Date(xemNam, xemThang - 1, 1 - lech);
+  const soNgay = new Date(xemNam, xemThang, 0).getDate();
+  const soHang = Math.ceil((lech + soNgay) / 7);
+
+  let h = THU_NGAN.map((t, i) => `<div class="lich-dau${i === 6 ? ' cn' : ''}">${t}</div>`).join('');
+
+  for (let i = 0; i < soHang * 7; i++) {
+    const d = new Date(batDau.getFullYear(), batDau.getMonth(), batDau.getDate() + i);
+    const dd = d.getDate(), mm = d.getMonth() + 1, yy = d.getFullYear();
+    const a = amLich(dd, mm, yy);
+    const ngoai = mm !== xemThang || yy !== xemNam;
+    const cn = d.getDay() === 0;
+
+    const le = a.ngay ? ngayLe(dd, mm, a.ngay, a.thang, a.nhuan) : null;
+    const gio = a.ngay ? (gioTheoNgay.get(khoaGio(a.ngay, a.thang, a.nhuan)) || []) : [];
+    const hd = a.ngay && laHoangDao(a.jd, a.thang);
+
+    const lop = ['lich-o'];
+    if (ngoai) lop.push('ngoai');
+    if (d.getTime() === chiNgay(homNay).getTime()) lop.push('hnay');
+    if (d.getTime() === chon.getTime()) lop.push('chon');
+
+    const nhanAm = !a.ngay ? '' : a.ngay === 1 ? `${a.ngay}/${a.thang}${a.nhuan ? '*' : ''}` : String(a.ngay);
+    // Giỗ đứng trước ngày lễ: đây là lịch của dòng họ
+    const duoi = gio.length ? `<span class="lich-gio">Giỗ ${esc(gio[0])}${gio.length > 1 ? ` +${gio.length - 1}` : ''}</span>`
+      : le ? `<span class="lich-le">${esc(le)}</span>`
+      : a.ngay ? canChiNgay(dd, mm, yy) : '';
+
+    h += `<button class="${lop.join(' ')}" data-ngay="${yy}-${mm}-${dd}"
+            aria-label="${dd}/${mm}/${yy}${a.ngay ? `, âm ${a.ngay}/${a.thang}` : ''}">
+        <span class="lich-o-tren">
+          <span class="lich-d${cn ? ' cn' : ''}">${dd}</span>
+          <span class="lich-a${a.ngay === 1 ? ' mot' : ''}">
+            <span class="cham ${hd ? 'hd' : 'hac'}"></span>${nhanAm}</span>
+        </span>
+        <span class="lich-o-duoi">${duoi}</span>
+      </button>`;
+  }
+  $('#luoi').innerHTML = h;
+
+  $('#luoi').querySelectorAll('[data-ngay]').forEach((b) => b.onclick = () => {
+    const [y, m, d] = b.dataset.ngay.split('-').map(Number);
+    chon = new Date(y, m - 1, d);
+    xemThang = m; xemNam = y;
+    veTatCa();
+  });
+}
+
+const veTatCa = () => { veNgay(); veLuoi(); };
+
+// ── Điều hướng ───────────────────────────────────────────────
+function doiThang(b) {
+  xemThang += b;
+  if (xemThang > 12) { xemThang = 1; xemNam++; }
+  if (xemThang < 1) { xemThang = 12; xemNam--; }
+  veLuoi();
+}
+function doiNgay(b) {
+  chon = new Date(chon.getFullYear(), chon.getMonth(), chon.getDate() + b);
+  xemThang = chon.getMonth() + 1; xemNam = chon.getFullYear();
+  veTatCa();
+}
+$('#btTruoc').onclick = () => doiNgay(-1);
+$('#btSau').onclick = () => doiNgay(1);
+$('#btThangTruoc').onclick = () => doiThang(-1);
+$('#btThangSau').onclick = () => doiThang(1);
+$('#btHomNay').onclick = () => {
+  chon = chiNgay(homNay);
+  xemThang = chon.getMonth() + 1; xemNam = chon.getFullYear();
+  veTatCa();
+};
+$('#chonThang').innerHTML = Array.from({ length: 12 }, (_, i) => opt(i + 1, `Tháng ${i + 1}`)).join('');
+$('#chonNam').innerHTML = Array.from({ length: NAM_MAX - NAM_MIN + 1 },
+  (_, i) => opt(NAM_MIN + i, NAM_MIN + i)).join('');
+$('#chonThang').onchange = $('#chonNam').onchange = () => {
+  xemThang = +$('#chonThang').value; xemNam = +$('#chonNam').value; veLuoi();
+};
+
+addEventListener('keydown', (e) => {
+  if ($('#manChon').classList.contains('mo')) { if (e.key === 'Escape') dongChon(); return; }
+  if (e.target.matches('input, select, textarea')) return;
+  if (e.key === 'ArrowLeft') doiNgay(-1);
+  else if (e.key === 'ArrowRight') doiNgay(1);
+  else if (e.key === 'PageUp') doiThang(-1);
+  else if (e.key === 'PageDown') doiThang(1);
+});
+
+// ── Hộp đổi ngày âm ↔ dương ──────────────────────────────────
+let pd = chon.getDate(), pm = chon.getMonth() + 1, py = chon.getFullYear();
+
+// Danh sách tháng âm của một năm âm, kèm tháng nhuận nếu có
+const thangAmCua = (nam) => thongTinNam(nam).map((x) => ({ thang: x.month, nhuan: x.leap }));
+
+function soNgayThangAm(nam, thang, nhuan) {
+  const ds = thongTinNam(nam);
+  const i = ds.findIndex((x) => x.month === thang && x.leap === (nhuan ? 1 : 0));
+  if (i < 0) return 30;
+  const sau = i + 1 < ds.length ? ds[i + 1].jd : (thongTinNam(nam + 1)[0]?.jd ?? ds[i].jd + 30);
+  return sau - ds[i].jd;
+}
+
+function veHopChon() {
+  const a = amLich(pd, pm, py);
+  $('#loiChon').textContent = a.ngay ? '' : `Chỉ đổi được trong khoảng năm ${NAM_MIN}–${NAM_MAX}.`;
+
+  $('#sd').innerHTML = Array.from({ length: new Date(py, pm, 0).getDate() },
+    (_, i) => opt(i + 1, `Ngày ${i + 1}`, i + 1 === pd)).join('');
+  $('#sm').innerHTML = Array.from({ length: 12 }, (_, i) => opt(i + 1, `Tháng ${i + 1}`, i + 1 === pm)).join('');
+  $('#sy').innerHTML = Array.from({ length: NAM_MAX - NAM_MIN + 1 },
+    (_, i) => opt(NAM_MIN + i, NAM_MIN + i, NAM_MIN + i === py)).join('');
+
+  if (a.ngay) {
+    const ds = thangAmCua(a.nam);
+    $('#ld').innerHTML = Array.from({ length: soNgayThangAm(a.nam, a.thang, a.nhuan) },
+      (_, i) => opt(i + 1, `Ngày ${i + 1}`, i + 1 === a.ngay)).join('');
+    $('#lm').innerHTML = ds.map((x) => opt(`${x.thang}-${x.nhuan}`,
+      `Tháng ${x.thang}${x.nhuan ? ' nhuận' : ''}`,
+      x.thang === a.thang && x.nhuan === (a.nhuan ? 1 : 0))).join('');
+    $('#ly').innerHTML = Array.from({ length: NAM_MAX - NAM_MIN + 1 },
+      (_, i) => opt(NAM_MIN + i, NAM_MIN + i, NAM_MIN + i === a.nam)).join('');
+  }
+  veMini();
+}
+
+function veMini() {
+  const dau = new Date(py, pm - 1, 1);
+  const lech = (dau.getDay() + 6) % 7;
+  const batDau = new Date(py, pm - 1, 1 - lech);
+  const soHang = Math.ceil((lech + new Date(py, pm, 0).getDate()) / 7);
+  let h = THU_NGAN.map((t, i) => `<div class="mini-dau${i === 6 ? ' cn' : ''}">${t}</div>`).join('');
+  for (let i = 0; i < soHang * 7; i++) {
+    const d = new Date(batDau.getFullYear(), batDau.getMonth(), batDau.getDate() + i);
+    const dd = d.getDate(), mm = d.getMonth() + 1, yy = d.getFullYear();
+    const a = amLich(dd, mm, yy);
+    const lop = ['mini-o'];
+    if (mm !== pm || yy !== py) lop.push('ngoai');
+    if (dd === pd && mm === pm && yy === py) lop.push('chon');
+    h += `<button class="${lop.join(' ')}" data-mini="${yy}-${mm}-${dd}" aria-label="${dd}/${mm}/${yy}">
+        <span class="mini-d${d.getDay() === 0 ? ' cn' : ''}">${dd}</span>
+        <span class="mini-a">${a.ngay === 1 ? `${a.ngay}/${a.thang}` : (a.ngay || '')}</span></button>`;
+  }
+  $('#miniLuoi').innerHTML = h;
+  $('#miniLuoi').querySelectorAll('[data-mini]').forEach((b) => b.onclick = () => {
+    const [y, m, dd] = b.dataset.mini.split('-').map(Number);
+    pd = dd; pm = m; py = y; veHopChon();
+  });
+}
+
+// Dương đổi -> âm tự đổi theo
+$('#sd').onchange = $('#sm').onchange = $('#sy').onchange = () => {
+  py = +$('#sy').value; pm = +$('#sm').value;
+  pd = Math.min(+$('#sd').value, new Date(py, pm, 0).getDate());
+  veHopChon();
+};
+// Âm đổi -> quy ra dương (dùng amSangDuong sẵn có, không phải chỉ đổi số hiển thị)
+$('#ld').onchange = $('#lm').onchange = $('#ly').onchange = () => {
+  const [thang, nhuan] = $('#lm').value.split('-').map(Number);
+  const nam = +$('#ly').value;
+  const ngay = Math.min(+$('#ld').value, soNgayThangAm(nam, thang, nhuan));
+  const [d, m, y] = amSangDuong(ngay, thang, nam, nhuan);
+  if (!d) { $('#loiChon').textContent = 'Năm âm đó không có tháng này.'; return; }
+  pd = d; pm = m; py = y;
+  veHopChon();
+};
+
+const dongChon = () => $('#manChon').classList.remove('mo');
+$('#btMoChon').onclick = () => {
+  pd = chon.getDate(); pm = chon.getMonth() + 1; py = chon.getFullYear();
+  veHopChon();
+  $('#manChon').classList.add('mo');
+};
+$('#btDongChon').onclick = dongChon;
+$('#manChon').onclick = (e) => { if (e.target === $('#manChon')) dongChon(); };
+$('#btXemNgay').onclick = () => {
+  chon = new Date(py, pm - 1, pd);
+  xemThang = pm; xemNam = py;
+  dongChon(); veTatCa();
+};
+
+// ── Giỗ trong họ ─────────────────────────────────────────────
+async function taiGio() {
+  if (!toi()) { location.href = '/'; return; }
+  const d = await api('/api/cay');
+  if (d.cau_hinh?.tieu_de) {
+    $('#phuDe').textContent = d.cau_hinh.tieu_de;
+    document.title = 'Lịch vạn niên — ' + d.cau_hinh.tieu_de;
+  }
+  gioTheoNgay = new Map();
+  for (const n of d.nguoi) {
+    if (!n.gio_ngay || !n.gio_thang) continue;
+    const k = khoaGio(n.gio_ngay, n.gio_thang, n.gio_nhuan);
+    (gioTheoNgay.get(k) || gioTheoNgay.set(k, []).get(k)).push(n.ho_ten);
+  }
+  veTatCa();
+}
+
+veTatCa();
+taiGio().catch((e) => { $('#loiChon').textContent = e.message; });
+</script>
+</body>
+</html>
