@@ -36,3 +36,5 @@ CREATE TABLE IF NOT EXISTS nguon (id INTEGER PRIMARY KEY AUTOINCREMENT, loai TEX
 CREATE TABLE IF NOT EXISTS dan_nguon (id INTEGER PRIMARY KEY AUTOINCREMENT, nguon_id INTEGER NOT NULL, nguoi_id INTEGER NOT NULL, truong TEXT NOT NULL, trich TEXT, tao_luc TEXT NOT NULL DEFAULT (datetime('now','+7 hours')), UNIQUE(nguon_id, nguoi_id, truong));
 CREATE INDEX IF NOT EXISTS idx_dan_nguon_nguoi ON dan_nguon(nguoi_id);
 CREATE INDEX IF NOT EXISTS idx_nguon_media ON nguon(media_id);
+CREATE TABLE IF NOT EXISTS de_xuat (id INTEGER PRIMARY KEY AUTOINCREMENT, loai TEXT NOT NULL, nguoi_id INTEGER, du_lieu TEXT NOT NULL, ly_do TEXT, nguoi_gui TEXT NOT NULL, trang_thai TEXT NOT NULL DEFAULT 'cho', nguoi_duyet TEXT, ghi_chu_duyet TEXT, gui_luc TEXT NOT NULL DEFAULT (datetime('now','+7 hours')), duyet_luc TEXT);
+CREATE INDEX IF NOT EXISTS idx_de_xuat_cho ON de_xuat(trang_thai, id);

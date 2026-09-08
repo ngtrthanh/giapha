@@ -17,6 +17,7 @@
     <a href="/" class="active">Cây phả hệ</a>
     <a href="/gio.html">Ngày giỗ</a>
     <a href="/lich.html">Lịch vạn niên</a>
+    <a href="/duyet.html">Duyệt</a>
     <a href="/admin.html">Quản trị</a>
     <span id="ai" style="color:var(--giay-mo);font-size:12px"></span>
     <button id="btThoat" style="padding:4px 10px">Thoát</button>
@@ -118,6 +119,12 @@
     </div>
 
     <label>Ghi chú</label><textarea id="f_ghi_chu" rows="3"></textarea>
+    <div id="khoiDeXuat" hidden>
+      <label>Bạn lấy tin này ở đâu? *</label>
+      <input id="f_ly_do" placeholder="Cụ Bảy kể · bia mộ ngoài nghĩa trang · gia phả chi 2">
+      <p style="color:var(--giay-mo);font-size:12px;margin:6px 0 0">
+        Đề xuất sẽ vào hàng đợi, người phụ trách phả duyệt rồi mới lên cây.</p>
+    </div>
     <div class="loi" id="loiNguoi"></div>
     <div class="dong-nut">
       <button class="chinh" id="btLuu">Lưu</button>
@@ -279,7 +286,7 @@ async function khoiDong() {
   $('#manDangNhap').classList.remove('mo');
   const me = await api('/api/toi');
   sessionStorage.setItem('gp_toi', JSON.stringify(me));
-  $('#btThem').style.display = duocSua() ? '' : 'none';
+  $('#btThem').textContent = duocSua() ? '+ Thêm người' : '+ Đề xuất thêm người';
   $('#ai').textContent = `${toi().ten} (${toi().quyen})`;
   await taiCay();
   const id = parseInt(location.hash.slice(1));
@@ -579,13 +586,15 @@ function moChiTiet(id) {
       <button id="bCP">Chuyển phả…</button>
       ${toi()?.quyen === 'admin' || toi()?.tao_pha ? '<button id="bMP">Mở phả riêng…</button>' : ''}
       ${toi()?.quyen === 'admin' ? '<button class="nguy" id="bXoa">Xoá</button>' : ''}
-    </div>` : `<p style="color:var(--giay-mo);font-size:13px;margin-top:22px">${
-      !duocSua() ? 'Tài khoản của bạn chỉ được xem.'
-                 : 'Người này ngoài phạm vi bạn được giao nên chỉ xem được.'
+    </div>` : `<div class="dong-nut"><button id="bDeXuat">Đề xuất sửa</button></div>
+    <p style="color:var(--giay-mo);font-size:12px;margin-top:8px">${
+      !duocSua() ? 'Bạn không sửa trực tiếp được, nhưng gửi đề xuất thì được — người phụ trách sẽ duyệt.'
+                 : 'Người này ngoài phạm vi bạn được giao. Gửi đề xuất để người phụ trách chi đó duyệt.'
     }</p>`}`;
   $('#bang').classList.add('mo');
   // Bỏ trung tâm thì mở lại bảng để nhãn nút cập nhật theo trạng thái mới
   $('#bTam').onclick = () => { if (id === tamId) { datTrungTam(null); moChiTiet(id); } else datTrungTam(id); };
+  const bdx = $('#bDeXuat'); if (bdx) bdx.onclick = () => moForm(n, null, true);
   const bn = $('#bNguon'); if (bn) bn.onclick = () => moNguon(n);
   const ob = $('#oBia'); if (ob) ob.onchange = (e) => taiFile(e.target.files[0], id, 'mo');
   $('#bang').querySelectorAll('[data-xdn]').forEach((b) => b.onclick = async () => {
@@ -667,9 +676,16 @@ function suyBanDoi(oNguon, oDich) {
   if (bd.length === 1) oDich.value = String(bd[0]);
 }
 
-function moForm(n, chaMe) {
+let deXuatDangMo = false;
+function moForm(n, chaMe, deXuat = false) {
   suaId = n?.id || null;
-  $('#tieuDeNguoi').textContent = n ? 'Sửa: ' + n.ho_ten : (chaMe ? 'Thêm con của ' + chaMe.ho_ten : 'Thêm người');
+  deXuatDangMo = deXuat;
+  $('#khoiDeXuat').hidden = !deXuat;
+  $('#f_ly_do').value = '';
+  $('#btLuu').textContent = deXuat ? 'Gửi đề xuất' : 'Lưu';
+  $('#tieuDeNguoi').textContent = deXuat
+    ? (n ? 'Đề xuất sửa: ' + n.ho_ten : 'Đề xuất thêm người')
+    : (n ? 'Sửa: ' + n.ho_ten : (chaMe ? 'Thêm con của ' + chaMe.ho_ten : 'Thêm người'));
   // Thêm con: gán luôn người đang mở làm cha/mẹ, và suy nốt vế còn lại từ hôn nhân đã khai
   let chaId = n?.cha_id ?? null, meId = n?.me_id ?? null;
   if (!n && chaMe) {
@@ -765,7 +781,7 @@ $('#f_ngay_mat').onchange = dongBoGio;
 $('#f_ngay_mat').oninput = dongBoGio;
 
 $('#btHuy').onclick = () => $('#manNguoi').classList.remove('mo');
-$('#btThem').onclick = () => moForm(null);
+$('#btThem').onclick = () => moForm(null, null, !duocSua());
 if (!duocSua()) $('#btThem').style.display = 'none';
 
 $('#btLuu').onclick = async () => {
@@ -779,6 +795,28 @@ $('#btLuu').onclick = async () => {
   if ($('#f_doi').disabled) delete b.doi;      // đời sẽ do máy chủ tính lại
   b.gio_nhuan = $('#f_da_mat').checked ? gioNhuan : 0;
   if (!$('#f_da_mat').checked) for (const f of F_MAT) b[f] = null;
+
+  if (deXuatDangMo) {
+    const ly_do = $('#f_ly_do').value.trim();
+    if (!ly_do) { $('#loiNguoi').textContent = 'Cho biết bạn lấy tin này ở đâu.'; return; }
+    // Chỉ gửi phần thực sự đổi, để người duyệt nhìn ra ngay cái gì mới
+    const goc = suaId ? DL.nguoi.find((x) => x.id === suaId) : null;
+    const doi = {};
+    for (const k of Object.keys(b)) {
+      const cu = goc ? (goc[k] ?? null) : null;
+      if ((b[k] ?? null) !== cu) doi[k] = b[k];
+    }
+    if (!Object.keys(doi).length) { $('#loiNguoi').textContent = 'Bạn chưa đổi gì cả.'; return; }
+    if (!suaId) doi.ho_ten = b.ho_ten;
+    try {
+      await api('/api/de-xuat', { method: 'POST', body: {
+        loai: suaId ? 'sua' : 'them', nguoi_id: suaId, du_lieu: doi, ly_do } });
+      $('#manNguoi').classList.remove('mo');
+      alert('Đã gửi đề xuất. Người phụ trách phả sẽ xem và duyệt.');
+    } catch (e) { $('#loiNguoi').textContent = e.message; }
+    return;
+  }
+
   try {
     if (suaId) {
       b.sua_luc = DL.nguoi.find((n) => n.id === suaId)?.sua_luc;

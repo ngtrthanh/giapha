@@ -379,6 +379,103 @@ async function xoaMedia(id, env, me) {
   return json({ ok: true });
 }
 
+// ── Hàng đợi duyệt ────────────────────────────────────────────────────────────
+// Ai đăng nhập cũng gửi được đề xuất, kể cả tài khoản chỉ-xem. Chỉ người có quyền
+// sửa mới duyệt, và chỉ duyệt được trong phạm vi chi/phả của mình.
+async function guiDeXuat(request, env, me) {
+  const b = await request.json().catch(() => ({}));
+  if (!["sua", "them"].includes(b.loai)) return err("Loại đề xuất không hợp lệ");
+  const { data, error } = clean(b.du_lieu || {});
+  if (error) return err(error);
+  if (!Object.keys(data).length) return err("Đề xuất rỗng — chưa đổi gì cả");
+
+  let nguoi_id = null;
+  if (b.loai === "sua") {
+    nguoi_id = parseInt(b.nguoi_id);
+    const co = await env.DB.prepare(`SELECT id FROM nguoi WHERE id = ?`).bind(nguoi_id).first();
+    if (!co) return err("Không tìm thấy người này", 404);
+  } else if (!String(data.ho_ten || "").trim()) return err("Thiếu họ tên");
+
+  const r = await env.DB.prepare(
+    `INSERT INTO de_xuat (loai, nguoi_id, du_lieu, ly_do, nguoi_gui) VALUES (?,?,?,?,?)`
+  ).bind(b.loai, nguoi_id, JSON.stringify(data), b.ly_do || null, me.ten).run();
+  await log(env, "de_xuat", r.meta.last_row_id, "them", me.ten, b.loai);
+  return json({ ok: true, id: r.meta.last_row_id }, 201);
+}
+
+// Người duyệt chỉ thấy đề xuất thuộc phạm vi mình được giao
+async function dsDeXuat(request, env, me) {
+  const u = new URL(request.url);
+  const tt = u.searchParams.get("trang_thai") || "cho";
+  const r = await env.DB.prepare(
+    `SELECT * FROM de_xuat WHERE trang_thai = ? ORDER BY id DESC LIMIT 200`).bind(tt).all();
+  const pv = phamVi(me);
+  if (!pv.pha && pv.chi == null) return json({ ok: true, data: r.results });
+  const ids = [...new Set(r.results.map((x) => x.nguoi_id).filter(Boolean))];
+  const trong = new Map();
+  for (const id of ids) {
+    const n = await env.DB.prepare(`SELECT pha_id, chi FROM nguoi WHERE id = ?`).bind(id).first();
+    trong.set(id, n && hopLe(n, pv));
+  }
+  return json({ ok: true, data: r.results.filter((x) => !x.nguoi_id || trong.get(x.nguoi_id)) });
+}
+
+async function duyetDeXuat(id, request, env, me) {
+  const b = await request.json().catch(() => ({}));
+  const dx = await env.DB.prepare(`SELECT * FROM de_xuat WHERE id = ?`).bind(id).first();
+  if (!dx) return err("Không tìm thấy", 404);
+  if (dx.trang_thai !== "cho") return err("Đề xuất này đã xử lý rồi");
+
+  if (b.tu_choi) {
+    await env.DB.prepare(
+      `UPDATE de_xuat SET trang_thai='tu_choi', nguoi_duyet=?, ghi_chu_duyet=?,
+         duyet_luc=datetime('now','+7 hours') WHERE id = ?`
+    ).bind(me.ten, b.ghi_chu || null, id).run();
+    await log(env, "de_xuat", id, "sua", me.ten, "từ chối");
+    return json({ ok: true, trang_thai: "tu_choi" });
+  }
+
+  // Đẩy lại qua đúng đường thêm/sửa thường ngày để dùng lại toàn bộ kiểm tra:
+  // phạm vi, vòng cha/mẹ, tính lại đời, ghi nhật ký.
+  const du = JSON.parse(dx.du_lieu);
+  const goc = new URL(request.url).origin;
+  let kq;
+  if (dx.loai === "them") {
+    kq = await themNguoi(new Request(goc + "/api/nguoi",
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(du) }), env, me);
+  } else {
+    const cur = await env.DB.prepare(`SELECT sua_luc FROM nguoi WHERE id = ?`).bind(dx.nguoi_id).first();
+    if (!cur) return err("Người này đã bị xoá", 404);
+    // Người duyệt nhìn thấy giá trị hiện tại rồi mới bấm, nên áp lên bản mới nhất
+    kq = await suaNguoi(dx.nguoi_id, new Request(goc + "/api/nguoi/" + dx.nguoi_id,
+      { method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...du, sua_luc: cur.sua_luc }) }), env, me);
+  }
+  if (!kq.ok) return kq;                       // lỗi phạm vi/kiểm tra thì giữ nguyên hàng đợi
+
+  const nguoiId = dx.nguoi_id ?? (await kq.clone().json()).nguoi?.id ?? null;
+  await env.DB.prepare(
+    `UPDATE de_xuat SET trang_thai='duyet', nguoi_duyet=?, ghi_chu_duyet=?,
+       duyet_luc=datetime('now','+7 hours') WHERE id = ?`
+  ).bind(me.ten, b.ghi_chu || null, id).run();
+
+  // Người gửi chính là xuất xứ của dữ kiện — ghi lại luôn, khỏi phải hỏi về sau
+  if (nguoiId) {
+    const ng = await env.DB.prepare(
+      `INSERT INTO nguon (loai, mo_ta, nguoi_cung_cap, ngay_thu_thap, do_tin_cay)
+       VALUES ('loi_ke', ?, ?, date('now','+7 hours'), 'vua')`
+    ).bind(`Đề xuất của ${dx.nguoi_gui}${dx.ly_do ? ": " + dx.ly_do : ""}`, dx.nguoi_gui).run();
+    for (const truong of Object.keys(du)) {
+      if (!FIELDS.includes(truong)) continue;
+      await env.DB.prepare(
+        `INSERT OR IGNORE INTO dan_nguon (nguon_id, nguoi_id, truong) VALUES (?,?,?)`
+      ).bind(ng.meta.last_row_id, nguoiId, truong).run();
+    }
+  }
+  await log(env, "de_xuat", id, "sua", me.ten, "duyệt");
+  return json({ ok: true, trang_thai: "duyet", nguoi_id: nguoiId });
+}
+
 // ── Nguồn dẫn ─────────────────────────────────────────────────────────────────
 const LOAI_NGUON = ["bia_mo","loi_ke","giay_to","pha_cu","anh","suy_doan","khac"];
 const TIN_CAY = ["cao","vua","thap"];
@@ -674,6 +771,15 @@ export default {
           return m === "PATCH" ? suaHonNhan(hid, request, env, me) : xoaHonNhan(hid, env, me);
         }
       }
+
+      if (p === "/api/de-xuat") {
+        // Gửi được kể cả tài khoản chỉ-xem — đó chính là điểm của hàng đợi
+        if (m === "POST") return guiDeXuat(request, env, me);
+        if (m === "GET") return canEdit ? dsDeXuat(request, env, me) : err("Không có quyền duyệt", 403);
+      }
+      mm = p.match(/^\/api\/de-xuat\/(\d+)$/);
+      if (mm && m === "POST")
+        return canEdit ? duyetDeXuat(parseInt(mm[1]), request, env, me) : err("Không có quyền duyệt", 403);
 
       if (p === "/api/nguon") {
         if (m === "GET") {

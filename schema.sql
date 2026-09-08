@@ -110,6 +110,26 @@ CREATE TABLE IF NOT EXISTS dan_nguon (
 CREATE INDEX IF NOT EXISTS idx_dan_nguon_nguoi ON dan_nguon(nguoi_id);
 CREATE INDEX IF NOT EXISTS idx_nguon_media ON nguon(media_id);
 
+-- ── Hàng đợi duyệt ────────────────────────────────────────────────────────────
+-- Người nhà GỬI ĐỀ XUẤT chứ không ghi thẳng vào cây. Ba mươi người cùng sửa một
+-- cây là mất kiểm soát chất lượng trong đúng một tuần, mà khoá lạc quan chỉ chống
+-- ghi đè chứ không chống dữ liệu sai.
+CREATE TABLE IF NOT EXISTS de_xuat (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  loai          TEXT NOT NULL CHECK(loai IN ('sua','them')),
+  nguoi_id      INTEGER REFERENCES nguoi(id) ON DELETE CASCADE,  -- NULL khi đề xuất thêm người mới
+  du_lieu       TEXT NOT NULL,                     -- JSON các trường được đề xuất
+  ly_do         TEXT,                              -- người gửi tự khai lấy tin ở đâu
+  nguoi_gui     TEXT NOT NULL,
+  trang_thai    TEXT NOT NULL DEFAULT 'cho' CHECK(trang_thai IN ('cho','duyet','tu_choi')),
+  nguoi_duyet   TEXT,
+  ghi_chu_duyet TEXT,
+  gui_luc       TEXT NOT NULL DEFAULT (datetime('now','+7 hours')),
+  duyet_luc     TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_de_xuat_cho ON de_xuat(trang_thai, id);
+
 CREATE TABLE IF NOT EXISTS nguoi_dung (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   ten        TEXT NOT NULL,

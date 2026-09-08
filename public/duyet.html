@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Duyệt đề xuất — Gia Phả</title>
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<header>
+  <h1>DUYỆT ĐỀ XUẤT<small id="phuDe">Người nhà gửi lên</small></h1>
+  <nav>
+    <a href="/">Cây phả hệ</a>
+    <a href="/gio.html">Ngày giỗ</a>
+    <a href="/lich.html">Lịch vạn niên</a>
+    <a href="/duyet.html" class="active">Duyệt <span id="soCho" class="chuong" hidden>0</span></a>
+    <a href="/admin.html">Quản trị</a>
+  </nav>
+</header>
+
+<div class="trang">
+  <div class="dong-nut" style="margin:0 0 20px">
+    <button class="loc-tt dang" data-tt="cho">Chờ duyệt</button>
+    <button class="loc-tt" data-tt="duyet">Đã duyệt</button>
+    <button class="loc-tt" data-tt="tu_choi">Đã từ chối</button>
+  </div>
+  <div id="ds"><div class="trong">Đang tải…</div></div>
+</div>
+
+<script type="module">
+import { api, toi, esc, moTaNgay } from '/assets/api.js';
+
+const $ = (s) => document.querySelector(s);
+let DL = { nguoi: [], pha: [] }, tt = 'cho';
+
+const NHAN = {
+  ho_ten: 'Họ tên', ten_khac: 'Tên khác', gioi_tinh: 'Giới tính', doi: 'Đời', chi: 'Chi',
+  pha_id: 'Phả', cha_id: 'Cha', me_id: 'Mẹ', ngay_sinh: 'Ngày sinh', sinh_kieu: 'Mức chắc chắn (sinh)',
+  sinh_den: 'Sinh — mốc sau', sinh_goc: 'Sinh — nguyên văn', ngay_mat: 'Ngày mất',
+  mat_kieu: 'Mức chắc chắn (mất)', mat_den: 'Mất — mốc sau', mat_goc: 'Mất — nguyên văn',
+  gio_ngay: 'Ngày giỗ', gio_thang: 'Tháng giỗ', gio_nhuan: 'Giỗ tháng nhuận',
+  noi_an_tang: 'Nơi an táng', mo_lat: 'Vĩ độ mộ', mo_lng: 'Kinh độ mộ', ghi_chu: 'Ghi chú',
+};
+const KIEU = { chinh_xac: 'chính xác', khoang: 'khoảng', truoc: 'trước', sau: 'sau',
+               giua: 'trong khoảng', khong_ro: 'không rõ' };
+const ten = (id) => DL.nguoi.find((n) => n.id === id)?.ho_ten || ('#' + id);
+
+// Hiện giá trị cho người đọc, không phải cho máy đọc
+function hien(truong, v) {
+  if (v === null || v === undefined || v === '') return '—';
+  if (truong === 'cha_id' || truong === 'me_id') return ten(v);
+  if (truong === 'pha_id') return DL.pha.find((p) => p.id === v)?.ten || ('#' + v);
+  if (truong === 'gioi_tinh') return { nam: 'Nam', nu: 'Nữ', khac: 'Khác' }[v] || v;
+  if (truong === 'sinh_kieu' || truong === 'mat_kieu') return KIEU[v] || v;
+  if (truong === 'gio_nhuan') return v ? 'có' : 'không';
+  return String(v);
+}
+
+async function tai() {
+  if (!toi()) { location.href = '/'; return; }
+  if (!toi().sua) {
+    $('#ds').innerHTML = '<div class="trong">Tài khoản của bạn không có quyền duyệt đề xuất.</div>';
+    return;
+  }
+  const cay = await api('/api/cay');
+  DL = cay;
+  if (cay.cau_hinh?.tieu_de) $('#phuDe').textContent = cay.cau_hinh.tieu_de;
+
+  const cho = await api('/api/de-xuat?trang_thai=cho');
+  $('#soCho').textContent = cho.data.length;
+  $('#soCho').hidden = cho.data.length === 0;
+
+  const r = tt === 'cho' ? cho : await api('/api/de-xuat?trang_thai=' + tt);
+  ve(r.data);
+}
+
+function ve(ds) {
+  if (!ds.length) {
+    $('#ds').innerHTML = `<div class="trong">${
+      tt === 'cho' ? 'Không có đề xuất nào đang chờ.' : 'Chưa có đề xuất nào ở mục này.'}</div>`;
+    return;
+  }
+  $('#ds').innerHTML = ds.map((x) => {
+    let du = {};
+    try { du = JSON.parse(x.du_lieu); } catch { du = {}; }
+    const goc = x.nguoi_id ? DL.nguoi.find((n) => n.id === x.nguoi_id) : null;
+    const tenAi = x.loai === 'them' ? (du.ho_ten || 'người mới') : (goc?.ho_ten || `#${x.nguoi_id} (đã bị xoá)`);
+
+    const hang = Object.keys(du).map((k) => {
+      const cu = goc ? goc[k] : null;
+      const doi = (cu ?? null) !== (du[k] ?? null);
+      return `<tr class="${doi ? '' : 'khong-doi'}">
+        <td class="o-truong">${esc(NHAN[k] || k)}</td>
+        <td class="o-cu">${esc(hien(k, cu))}</td>
+        <td class="o-moi">${esc(hien(k, du[k]))}</td></tr>`;
+    }).join('');
+
+    return `<article class="dx">
+      <div class="dx-dau">
+        <span class="the">${x.loai === 'them' ? 'Thêm người' : 'Sửa'}</span>
+        <b>${esc(tenAi)}</b>
+        <span class="dx-ai">${esc(x.nguoi_gui)} · ${esc(x.gui_luc)}</span>
+      </div>
+      ${x.ly_do ? `<div class="dx-lydo">Nguồn tin: ${esc(x.ly_do)}</div>`
+                : '<div class="dx-lydo thieu">Không ghi nguồn tin</div>'}
+      <div class="cuon-ngang"><table class="dx-bang">
+        <thead><tr><th>Trường</th><th>Đang là</th><th>Đề xuất</th></tr></thead>
+        <tbody>${hang}</tbody></table></div>
+      ${x.trang_thai === 'cho' ? `<div class="dong-nut" style="margin-top:12px">
+        <button class="chinh" data-duyet="${x.id}">Duyệt và áp dụng</button>
+        <button class="nguy" data-tuchoi="${x.id}">Từ chối</button>
+        ${goc ? `<a class="nut" href="/#${x.nguoi_id}">Xem trên cây</a>` : ''}
+      </div>` : `<div class="dx-ket">${x.trang_thai === 'duyet' ? 'Đã duyệt' : 'Đã từ chối'} bởi
+        ${esc(x.nguoi_duyet || '—')} · ${esc(x.duyet_luc || '')}
+        ${x.ghi_chu_duyet ? '· ' + esc(x.ghi_chu_duyet) : ''}</div>`}
+    </article>`;
+  }).join('');
+
+  document.querySelectorAll('[data-duyet]').forEach((b) => b.onclick = async () => {
+    b.disabled = true;
+    try { await api('/api/de-xuat/' + b.dataset.duyet, { method: 'POST', body: {} }); await tai(); }
+    catch (e) { alert(e.message); b.disabled = false; }
+  });
+  document.querySelectorAll('[data-tuchoi]').forEach((b) => b.onclick = async () => {
+    const ghi = prompt('Lý do từ chối (người gửi sẽ không thấy, nhưng nhật ký giữ lại):', '');
+    if (ghi === null) return;
+    b.disabled = true;
+    try { await api('/api/de-xuat/' + b.dataset.tuchoi, { method: 'POST', body: { tu_choi: true, ghi_chu: ghi } });
+      await tai(); }
+    catch (e) { alert(e.message); b.disabled = false; }
+  });
+}
+
+document.querySelectorAll('.loc-tt').forEach((b) => b.onclick = () => {
+  tt = b.dataset.tt;
+  document.querySelectorAll('.loc-tt').forEach((x) => x.classList.toggle('dang', x === b));
+  tai().catch((e) => { $('#ds').innerHTML = `<div class="trong">${esc(e.message)}</div>`; });
+});
+
+tai().catch((e) => { $('#ds').innerHTML = `<div class="trong">${esc(e.message)}</div>`; });
+</script>
+</body>
+</html>

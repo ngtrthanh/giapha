@@ -278,3 +278,28 @@ body:has(#khungCay) { overflow:hidden; }
            background: rgba(8,6,5,.75); color: var(--ngoc); padding: 1px 4px; pointer-events: none; }
 .chu-bia { font-size: 10px; color: var(--giay-mo); margin-top: 3px; line-height: 1.35;
            max-height: 42px; overflow: hidden; }
+
+/* ── Hàng đợi duyệt ───────────────────────────────────────────── */
+.chuong { display: inline-block; min-width: 17px; padding: 1px 5px; margin-left: 4px;
+          background: var(--vang); color: var(--den); border-radius: 9px;
+          font-size: 10px; font-weight: 600; text-align: center; }
+.loc-tt.dang { border-color: var(--vang); background: rgba(201,162,39,.14); }
+.dx { border: 1px solid var(--vien); border-left: 2px solid var(--vang);
+      padding: 15px 17px; margin-bottom: 14px; background: rgba(0,0,0,.16); }
+.dx-dau { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; }
+.dx-dau b { font-family: var(--serif); font-size: 17px; color: var(--giay); }
+.dx-ai { margin-left: auto; font-size: 12px; color: var(--giay-mo); }
+.dx-lydo { margin-top: 7px; font-size: 13px; color: var(--ngoc); }
+.dx-lydo.thieu { color: #d98b7f; font-style: italic; }
+.cuon-ngang { overflow-x: auto; }
+.dx-bang { margin-top: 11px; font-size: 13px; }
+.dx-bang th { font-size: 10px; padding: 6px 9px; }
+.dx-bang td { padding: 7px 9px; }
+.o-truong { color: var(--giay-mo); font-size: 12px; white-space: nowrap; }
+.o-cu { color: var(--giay-mo); text-decoration: line-through;
+        text-decoration-color: rgba(217,139,127,.5); }
+.o-moi { color: var(--vang); }
+.dx-bang tr.khong-doi .o-moi { color: var(--giay-mo); }
+.dx-bang tr.khong-doi .o-cu { text-decoration: none; }
+.dx-ket { margin-top: 11px; font-size: 12px; color: var(--giay-mo);
+          border-top: 1px dashed var(--vien); padding-top: 9px; }
